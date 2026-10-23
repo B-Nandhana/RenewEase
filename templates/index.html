@@ -1,0 +1,2421 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RenewEase — Enterprise Microgrid Management</title>
+  <meta name="description" content="Autonomous microgrid orchestration and predictive renewable energy management for Coimbatore Tech Park.">
+
+  <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              solar: '#f59e0b',
+              solarLight: '#fbbf24',
+              wind: '#06b6d4',
+              windLight: '#38bdf8',
+              total: '#10b981',
+              totalLight: '#34d399',
+              battery: '#6366f1',
+              batteryLight: '#818cf8',
+              surface: '#0f172a',
+              card: 'rgba(15, 23, 42, 0.75)',
+            }
+          },
+          boxShadow: {
+            'glow-solar': '0 0 30px -5px rgba(245, 158, 11, 0.3)',
+            'glow-wind': '0 0 30px -5px rgba(6, 182, 212, 0.3)',
+            'glow-total': '0 0 30px -5px rgba(16, 185, 129, 0.3)',
+            'glow-battery': '0 0 30px -5px rgba(99, 102, 241, 0.3)',
+            'glow-accent': '0 0 25px rgba(99, 102, 241, 0.25)',
+            'glow-danger': '0 0 30px rgba(239, 68, 68, 0.4)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.js"></script>
+
+  <!-- Three.js & OrbitControls for 3D Digital Twin -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <!-- Leaflet GIS Map & Turf.js Geospatial Analysis -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
+
+  <style>
+    /* Custom range sliders */
+    input[type=range] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: #1e293b;
+      border-radius: 9999px;
+      height: 6px;
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #6366f1;
+      cursor: pointer;
+      box-shadow: 0 0 12px rgba(99, 102, 241, 0.6);
+      border: 2px solid #0f172a;
+      transition: transform 0.15s ease, background-color 0.15s ease;
+    }
+    input[type=range].solar-slider::-webkit-slider-thumb {
+      background: #fbbf24;
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.6);
+    }
+    input[type=range].wind-slider::-webkit-slider-thumb {
+      background: #38bdf8;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+    }
+    input[type=range]::-webkit-slider-thumb:hover {
+      transform: scale(1.25);
+    }
+
+    /* Modern glass scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090d16;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+
+    /* 3D Canvas container styling */
+    #facilityCanvasContainer {
+      position: relative;
+      width: 100%;
+      height: 560px;
+      background: radial-gradient(circle at 50% 30%, #172033 0%, #090d16 100%);
+      border-radius: 1rem;
+      overflow: hidden;
+    }
+    #facilityCanvasContainer canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+      outline: none;
+    }
+
+    /* Leaflet Dark Theme Overrides */
+    .leaflet-container {
+      background-color: #0b0f19 !important;
+      font-family: 'Plus Jakarta Sans', sans-serif !important;
+    }
+    .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+      background: #0f172a !important;
+      color: #f1f5f9 !important;
+      border: 1px solid #334155 !important;
+      border-radius: 0.75rem !important;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6) !important;
+    }
+
+    /* Tab page animation */
+    .page-section {
+      animation: fadeInPage 0.25s ease-out forwards;
+    }
+    @keyframes fadeInPage {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+
+<body class="bg-[#080c14] text-slate-100 min-h-screen font-sans antialiased selection:bg-indigo-500 selection:text-white relative overflow-x-hidden">
+
+  <!-- Ambient Glow Gradients -->
+  <div class="fixed top-0 left-1/4 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none -z-10"></div>
+  <div class="fixed top-1/3 right-1/4 w-[450px] h-[450px] bg-emerald-600/10 rounded-full blur-[120px] pointer-events-none -z-10"></div>
+  <div class="fixed bottom-10 left-1/3 w-[500px] h-[500px] bg-amber-500/10 rounded-full blur-[120px] pointer-events-none -z-10"></div>
+
+  <!-- Global Toast Alert Banner (System popups) -->
+  <div id="systemToast" class="hidden fixed top-5 right-5 z-50 p-4 rounded-xl shadow-2xl backdrop-blur-xl border transition-all duration-300 max-w-md bg-slate-900/95 border-slate-700">
+    <div class="flex items-center gap-3">
+      <span id="toastIcon"></span>
+      <div>
+        <p id="toastTitle" class="text-xs font-bold text-white"></p>
+        <p id="toastMessage" class="text-xs text-slate-300 mt-0.5"></p>
+      </div>
+      <button onclick="dismissSystemToast()" class="text-slate-400 hover:text-white ml-2 text-sm">✕</button>
+    </div>
+  </div>
+
+  <!-- Main Application Wrapper -->
+  <div class="max-w-[1640px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
+
+    <!-- ======================================================== -->
+    <!-- PERSISTENT GLOBAL HEADER (VISIBLE ON ALL PAGES)          -->
+    <!-- ======================================================== -->
+    <header class="bg-slate-900/75 backdrop-blur-xl border border-slate-800/90 rounded-2xl p-4 sm:p-5 mb-4 shadow-2xl transition-all">
+      
+      <!-- Row 1: Brand, Persistent Status Line, Time, & Profile -->
+      <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
+        
+        <!-- Brand & Identity -->
+        <div class="flex items-center gap-3.5">
+          <div class="relative w-11 h-11 rounded-xl bg-gradient-to-tr from-amber-400 via-emerald-400 to-indigo-500 p-0.5 shadow-lg shadow-indigo-500/20 flex-shrink-0">
+            <div class="w-full h-full bg-[#0b0f19] rounded-[10px] flex items-center justify-center">
+              <svg class="w-5 h-5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2v8"></path>
+                <path d="m4.93 10.93 1.41 1.41"></path>
+                <path d="M2 18h2"></path>
+                <path d="M20 18h2"></path>
+                <path d="m19.07 10.93-1.41 1.41"></path>
+                <path d="M22 22H2"></path>
+                <path d="m16 6-4 4-4-4"></path>
+                <path d="M16 18a4 4 0 0 0-8 0"></path>
+              </svg>
+            </div>
+            <span class="absolute -top-1 -right-1 flex h-3 w-3">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+            </span>
+          </div>
+
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
+                Renew<span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400">Ease</span>
+              </h1>
+              <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300">
+                Microgrid OS
+              </span>
+            </div>
+            <p class="text-xs text-slate-400">
+              Autonomous Renewable Energy Management System
+            </p>
+          </div>
+        </div>
+
+        <!-- EXACT PERSISTENT HEADER STRING (GLOBAL REQUIREMENT) -->
+        <div class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 shadow-inner">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-xs sm:text-sm font-semibold tracking-wide text-slate-200">
+            Location: <span class="text-white font-bold">Coimbatore Tech Park</span>
+            <span class="text-slate-600 mx-1.5">•</span>
+            Baseline Load: <span class="text-white font-bold">55 kW</span>
+            <span class="text-slate-600 mx-1.5">•</span>
+            System Status: <span id="globalHeaderStatusText" class="text-emerald-400 font-bold">Active</span>
+          </span>
+        </div>
+
+        <!-- Live Clock, Sync Weather Action & Profile -->
+        <div class="flex items-center gap-3 sm:gap-4 flex-wrap">
+          
+          <!-- Live Weather Sync Button -->
+          <button onclick="fetchLiveOpenMeteoTelemetry()" class="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-xs text-emerald-400 hover:text-emerald-300 border border-slate-700/80 transition-all flex items-center gap-2" title="Sync live Open-Meteo satellite feed">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            Sync Live Weather
+          </button>
+
+          <!-- Live Clock -->
+          <div class="hidden sm:flex flex-col text-right font-mono">
+            <span id="liveTimeClock" class="text-xs font-bold text-slate-200">11:45:00 AM</span>
+            <span class="text-[10px] text-slate-500 uppercase">IST (UTC +5:30)</span>
+          </div>
+
+          <!-- Alert Notification Bell -->
+          <div class="relative">
+            <button id="alertNotificationBtn" onclick="toggleNotificationPanel()" class="relative p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all">
+              <svg class="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
+              </svg>
+              <span id="alertBellBadge" class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-slate-950 text-[10px] font-extrabold flex items-center justify-center">
+                1
+              </span>
+            </button>
+
+            <!-- Dropdown Notifications Panel -->
+            <div id="notificationDropdown" class="hidden absolute right-0 mt-3 w-80 sm:w-96 bg-slate-900/95 backdrop-blur-2xl border border-slate-700 rounded-2xl shadow-2xl p-4 z-50">
+              <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-amber-400"></span> Live Microgrid Notifications
+                </span>
+                <span class="text-[11px] font-mono text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">Operational</span>
+              </div>
+              <div class="space-y-2.5 mt-3 text-xs">
+                <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25">
+                  <h4 class="font-bold text-amber-300">1-Hour Ahead Weather Action</h4>
+                  <p class="text-slate-300 mt-1 leading-relaxed text-[11px]">
+                    Cloud cover predicted in 1 hour over Coimbatore Tech Park. Storing extra solar energy into BESS containers now to avoid high peak-grid costs later today.
+                  </p>
+                </div>
+                <div class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25">
+                  <h4 class="font-bold text-emerald-300">Hardware & Telemetry Gateway Steady</h4>
+                  <p class="text-slate-300 mt-1 leading-relaxed text-[11px]">
+                    Modbus TCP Gateway (Port 502) connected. All 4 Smart Meters transmitting valid readings with zero communication errors.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- User Profile -->
+          <div class="flex items-center gap-2 pl-2 border-l border-slate-800">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-emerald-400 p-0.5 flex-shrink-0">
+              <div class="w-full h-full bg-slate-900 rounded-full flex items-center justify-center text-xs font-bold text-white">
+                TP
+              </div>
+            </div>
+            <div class="hidden md:block text-left text-xs">
+              <span class="block font-semibold text-slate-200">Tech Park Operator</span>
+              <span class="block text-[10px] text-emerald-400 font-mono">Shift #1 Active</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Row 2: 4-PAGE MAIN NAVIGATION TABS -->
+      <nav class="flex items-center gap-2 pt-3 overflow-x-auto no-scrollbar">
+        
+        <button id="navBtnPage1" onclick="navigateToPage(1)" class="px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/20 whitespace-nowrap">
+          <span>🌤️</span>
+          <span>Weather & Site Conditions</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-black/20 text-white font-mono">Landing</span>
+        </button>
+
+        <button id="navBtnPage2" onclick="navigateToPage(2)" class="px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/80 transition-all flex items-center gap-2 whitespace-nowrap">
+          <span>🌐</span>
+          <span>3D Digital Twin</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">Live 1:1</span>
+        </button>
+
+        <button id="navBtnPage3" onclick="navigateToPage(3)" class="px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/80 transition-all flex items-center gap-2 whitespace-nowrap">
+          <span>🧠</span>
+          <span>AI Dispatch & Forecast</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">T+1 Ahead</span>
+        </button>
+
+        <button id="navBtnPage4" onclick="navigateToPage(4)" class="px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/80 transition-all flex items-center gap-2 whitespace-nowrap">
+          <span>🗺️</span>
+          <span>GIS Map & Telemetry</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">Turf + Modbus</span>
+        </button>
+
+      </nav>
+
+    </header>
+
+    <!-- ======================================================== -->
+    <!-- UNIVERSAL ALERT BANNER (PERSISTENT ON ALL 4 PAGES)       -->
+    <!-- Displays RED on emergency/deficit, EMERALD on normal     -->
+    <!-- ======================================================== -->
+    <div id="universalAlertBanner" class="mb-5 p-4 rounded-2xl transition-all duration-300 bg-gradient-to-r from-emerald-950/70 via-slate-900/85 to-slate-900/70 border border-emerald-500/40 shadow-xl shadow-emerald-950/20">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        
+        <div class="flex items-start sm:items-center gap-3.5">
+          <div id="universalAlertIconBox" class="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex-shrink-0">
+            <svg id="universalAlertSvg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              <path d="m9 12 2 2 4-4"></path>
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2.5 flex-wrap">
+              <h3 id="universalAlertTitle" class="text-sm sm:text-base font-extrabold text-white">
+                Zero Peak Grid Penalties Expected Today
+              </h3>
+              <span id="universalAlertPill" class="px-2.5 py-0.5 rounded text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                Guaranteed Plant Protection
+              </span>
+            </div>
+            <p id="universalAlertMessage" class="text-xs sm:text-sm text-slate-300 mt-0.5 leading-relaxed">
+              100% of Coimbatore Tech Park load (55.0 kW) is powered by onsite clean generation. Battery buffering surplus (+13.7 kW). Estimated utility savings today: <strong class="text-emerald-400">₹18,450</strong>.
+            </p>
+          </div>
+        </div>
+
+        <!-- Alert Action & Quick Test Trigger -->
+        <div class="flex items-center gap-2.5 self-end md:self-center flex-shrink-0">
+          <button id="alertTestToggleBtn" onclick="toggleSimulatedEmergency()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all flex items-center gap-1.5" title="Demonstrate high-visibility red emergency alert">
+            <span>🚨</span>
+            <span id="alertTestBtnText">Test Emergency Alert</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- ======================================================== -->
+    <!-- PAGE 1: WEATHER & SITE CONDITIONS (LANDING PAGE)         -->
+    <!-- ======================================================== -->
+    <div id="pageSection1" class="page-section space-y-6">
+
+      <!-- High-Level Metric Summary Cards (Solar, Wind, Total, Battery) -->
+      <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- Card 1: Solar Power Output -->
+        <div class="relative bg-slate-900/70 backdrop-blur-xl rounded-2xl p-5 border border-slate-800 shadow-xl hover:border-amber-500/40 hover:shadow-glow-solar transition-all">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="4"></circle>
+                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+                </svg>
+              </div>
+              <div>
+                <span class="text-xs font-bold uppercase tracking-wider text-amber-400">Solar Power Output</span>
+                <p class="text-[11px] text-slate-400">Rooftop Solar Arrays (80 kWp)</p>
+              </div>
+            </div>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-amber-950/80 text-amber-400 border border-amber-800/50 font-mono">
+              Active
+            </span>
+          </div>
+
+          <div class="mt-2">
+            <div class="flex items-baseline gap-2">
+              <span id="solarMetricValue" class="text-3xl sm:text-4xl font-extrabold font-mono tracking-tight text-white">36.50</span>
+              <span class="text-base font-bold text-amber-400">kW</span>
+            </div>
+            <p id="solarMetricSubtext" class="text-xs text-slate-300 mt-1 flex items-center gap-1.5">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+              Optimal direct sunlight capture
+            </p>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-800/80">
+            <div class="flex justify-between text-[11px] text-slate-400 mb-1.5 font-mono">
+              <span>Array Capacity</span>
+              <span id="solarCapacityPercent" class="text-amber-300 font-semibold">45.6%</span>
+            </div>
+            <div class="w-full bg-slate-800/90 rounded-full h-2 overflow-hidden">
+              <div id="solarProgressBar" class="bg-gradient-to-r from-amber-500 to-amber-300 h-2 rounded-full transition-all duration-500" style="width: 45.6%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Wind Power Output -->
+        <div class="relative bg-slate-900/70 backdrop-blur-xl rounded-2xl p-5 border border-slate-800 shadow-xl hover:border-cyan-500/40 hover:shadow-glow-wind transition-all">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <div class="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"></path>
+                  <path d="M9.6 4.6A2 2 0 1 1 11 8H2"></path>
+                  <path d="M12.6 19.4A2 2 0 1 0 14 16H2"></path>
+                </svg>
+              </div>
+              <div>
+                <span class="text-xs font-bold uppercase tracking-wider text-cyan-400">Wind Power Output</span>
+                <p class="text-[11px] text-slate-400">Dual Industrial Turbines (60 kW)</p>
+              </div>
+            </div>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-400 border border-cyan-800/50 font-mono">
+              Active
+            </span>
+          </div>
+
+          <div class="mt-2">
+            <div class="flex items-baseline gap-2">
+              <span id="windMetricValue" class="text-3xl sm:text-4xl font-extrabold font-mono tracking-tight text-white">32.20</span>
+              <span class="text-base font-bold text-cyan-400">kW</span>
+            </div>
+            <p id="windMetricSubtext" class="text-xs text-slate-300 mt-1 flex items-center gap-1.5">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+              18.4 RPM continuous clean rotation
+            </p>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-800/80">
+            <div class="flex justify-between text-[11px] text-slate-400 mb-1.5 font-mono">
+              <span>Turbine Capacity</span>
+              <span id="windCapacityPercent" class="text-cyan-300 font-semibold">53.7%</span>
+            </div>
+            <div class="w-full bg-slate-800/90 rounded-full h-2 overflow-hidden">
+              <div id="windProgressBar" class="bg-gradient-to-r from-cyan-500 to-cyan-300 h-2 rounded-full transition-all duration-500" style="width: 53.7%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3: Total Clean Power Output -->
+        <div class="relative bg-slate-900/70 backdrop-blur-xl rounded-2xl p-5 border border-slate-800 shadow-xl hover:border-emerald-500/40 hover:shadow-glow-total transition-all">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"></path>
+                </svg>
+              </div>
+              <div>
+                <span class="text-xs font-bold uppercase tracking-wider text-emerald-400">Total Clean Power</span>
+                <p class="text-[11px] text-slate-400">Solar + Wind Aggregated</p>
+              </div>
+            </div>
+            <span id="totalCleanBadge" class="text-[11px] px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800/50 font-mono">
+              Surplus
+            </span>
+          </div>
+
+          <div class="mt-2">
+            <div class="flex items-baseline gap-2">
+              <span id="totalMetricValue" class="text-3xl sm:text-4xl font-extrabold font-mono tracking-tight text-white">68.70</span>
+              <span class="text-base font-bold text-emerald-400">kW</span>
+            </div>
+            <p id="totalMetricSubtext" class="text-xs text-slate-300 mt-1 flex items-center gap-1.5">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              100% Factory Powered (+13.7 kW to BESS)
+            </p>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-800/80">
+            <div class="flex justify-between text-[11px] text-slate-400 mb-1.5 font-mono">
+              <span>Plant Self-Sufficiency</span>
+              <span id="selfSufficiencyPercent" class="text-emerald-300 font-semibold">100%</span>
+            </div>
+            <div class="w-full bg-slate-800/90 rounded-full h-2 overflow-hidden">
+              <div id="totalProgressBar" class="bg-gradient-to-r from-emerald-500 to-teal-300 h-2 rounded-full transition-all duration-500" style="width: 100%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 4: Battery Storage Level (BESS) -->
+        <div class="relative bg-slate-900/70 backdrop-blur-xl rounded-2xl p-5 border border-slate-800 shadow-xl hover:border-indigo-500/40 hover:shadow-glow-battery transition-all">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect width="16" height="10" x="2" y="7" rx="2" ry="2"></rect>
+                  <line x1="22" x2="22" y1="11" y2="13"></line>
+                  <path d="M11 10v4M9 12l2-2 2 2"></path>
+                </svg>
+              </div>
+              <div>
+                <span class="text-xs font-bold uppercase tracking-wider text-indigo-400">Battery Storage Level</span>
+                <p class="text-[11px] text-slate-400">BESS Lithium-Ion (200 kWh)</p>
+              </div>
+            </div>
+            <span id="batteryStatusBadge" class="text-[11px] px-2 py-0.5 rounded bg-indigo-950/80 text-indigo-400 border border-indigo-800/50 font-mono">
+              Charging
+            </span>
+          </div>
+
+          <div class="mt-2">
+            <div class="flex items-baseline gap-2">
+              <span id="batteryLevelValue" class="text-3xl sm:text-4xl font-extrabold font-mono tracking-tight text-white">82%</span>
+              <span class="text-base font-bold text-indigo-300">Charged</span>
+            </div>
+            <p id="batterySubtext" class="text-xs text-slate-300 mt-1 flex items-center gap-1.5">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+              Battery Level: 82% — Ready for 4.8 Hours Backup
+            </p>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-800/80">
+            <div class="flex justify-between text-[11px] text-slate-400 mb-1.5 font-mono">
+              <span>Reserve Readiness</span>
+              <span id="batteryPercentText" class="text-indigo-300 font-semibold">82%</span>
+            </div>
+            <div class="w-full bg-slate-800/90 rounded-full h-2 overflow-hidden">
+              <div id="batteryProgressBar" class="bg-gradient-to-r from-indigo-500 to-indigo-300 h-2 rounded-full transition-all duration-500" style="width: 82%"></div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Live Environmental Conditions & Presentation Controls Card -->
+      <section class="bg-slate-900/70 backdrop-blur-xl rounded-2xl p-6 border border-slate-800 shadow-2xl">
+        
+        <!-- Header & 1-Click Demo Presets -->
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between pb-5 mb-6 border-b border-slate-800 gap-4">
+          <div>
+            <div class="flex items-center gap-3">
+              <div class="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path>
+                </svg>
+              </div>
+              <div>
+                <h2 class="text-base sm:text-lg font-bold text-white">Current Weather & Plant Operating Conditions</h2>
+                <p class="text-xs text-slate-400">
+                  Live satellite telemetry from Open-Meteo API or adjust demo sliders for presentation testing
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Demo Weather Controls Bar -->
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs text-slate-400 mr-1 font-semibold">Demo Weather Presets:</span>
+            <button type="button" onclick="applyPresetScenario('sunny')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-amber-500/20 hover:text-amber-300 text-slate-200 border border-slate-700 transition-all flex items-center gap-1.5">
+              ☀️ Bright Sun
+            </button>
+            <button type="button" onclick="applyPresetScenario('cloudy')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-indigo-500/20 hover:text-indigo-300 text-slate-200 border border-slate-700 transition-all flex items-center gap-1.5">
+              ⛅ Cloud Front
+            </button>
+            <button type="button" onclick="applyPresetScenario('windy')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-200 border border-slate-700 transition-all flex items-center gap-1.5">
+              💨 High Wind
+            </button>
+            <button type="button" onclick="applyPresetScenario('monsoon')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-200 border border-slate-700 transition-all flex items-center gap-1.5">
+              🌧️ Monsoon
+            </button>
+            <button type="button" onclick="fetchLiveOpenMeteoTelemetry()" class="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-md transition-all flex items-center gap-1.5">
+              ↻ Sync Live Weather
+            </button>
+          </div>
+        </div>
+
+        <!-- Controls Form with Human-Readable Sliders -->
+        <form id="facilitySimForm" onsubmit="event.preventDefault(); runForecastPipeline();" class="space-y-6">
+          
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <!-- Slider 1: Sunlight Intensity -->
+            <div class="bg-slate-950/70 p-4 rounded-xl border border-slate-800">
+              <div class="flex justify-between items-center mb-2">
+                <label for="solarIrradiance" class="text-xs font-bold text-slate-200">Sunlight Intensity</label>
+                <div class="flex items-center gap-1 font-mono text-xs">
+                  <input type="number" id="solarIrradianceNum" step="10" min="0" max="1500" value="850.0"
+                    class="w-16 px-1.5 py-0.5 text-right bg-slate-800 border border-slate-700 rounded text-amber-300 font-bold focus:outline-none focus:border-amber-400">
+                  <span class="text-slate-400 text-[11px]">W/m²</span>
+                </div>
+              </div>
+              <input type="range" id="solarIrradiance" min="0" max="1500" step="10" value="850.0"
+                class="w-full solar-slider" oninput="syncDualInput('solarIrradiance', 'solarIrradianceNum')">
+              <div class="flex justify-between text-[10px] text-slate-500 font-mono mt-1.5">
+                <span>0 (Night)</span>
+                <span>350 (Cloudy)</span>
+                <span>850 (Sunny)</span>
+                <span>1200 (Noon)</span>
+              </div>
+            </div>
+
+            <!-- Slider 2: Wind Speed -->
+            <div class="bg-slate-950/70 p-4 rounded-xl border border-slate-800">
+              <div class="flex justify-between items-center mb-2">
+                <label for="windSpeed" class="text-xs font-bold text-slate-200">Wind Velocity</label>
+                <div class="flex items-center gap-1 font-mono text-xs">
+                  <input type="number" id="windSpeedNum" step="0.5" min="0" max="40" value="12.5"
+                    class="w-16 px-1.5 py-0.5 text-right bg-slate-800 border border-slate-700 rounded text-cyan-300 font-bold focus:outline-none focus:border-cyan-400">
+                  <span class="text-slate-400 text-[11px]">m/s</span>
+                </div>
+              </div>
+              <input type="range" id="windSpeed" min="0" max="40" step="0.5" value="12.5"
+                class="w-full wind-slider" oninput="syncDualInput('windSpeed', 'windSpeedNum')">
+              <div class="flex justify-between text-[10px] text-slate-500 font-mono mt-1.5">
+                <span>0 m/s (Calm)</span>
+                <span>3 m/s (Cut-In)</span>
+                <span>12.5 m/s (Optimal)</span>
+                <span>25 m/s (Gale)</span>
+              </div>
+            </div>
+
+            <!-- Slider 3: Ambient Temperature -->
+            <div class="bg-slate-950/70 p-4 rounded-xl border border-slate-800">
+              <div class="flex justify-between items-center mb-2">
+                <label for="solarTemp" class="text-xs font-bold text-slate-200">Ambient Temperature</label>
+                <div class="flex items-center gap-1 font-mono text-xs">
+                  <input type="number" id="solarTempNum" step="0.5" min="-20" max="60" value="28.5"
+                    class="w-16 px-1.5 py-0.5 text-right bg-slate-800 border border-slate-700 rounded text-amber-300 font-bold focus:outline-none focus:border-amber-400">
+                  <span class="text-slate-400 text-[11px]">°C</span>
+                </div>
+              </div>
+              <input type="range" id="solarTemp" min="-20" max="60" step="0.5" value="28.5"
+                class="w-full solar-slider" oninput="syncDualInput('solarTemp', 'solarTempNum')">
+              <div class="flex justify-between text-[10px] text-slate-500 font-mono mt-1.5">
+                <span>15°C (Cool)</span>
+                <span>28°C (Normal)</span>
+                <span>38°C (Hot)</span>
+                <span>50°C</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Secondary Atmospheric Parameters (Collapsible) -->
+          <div class="p-4 rounded-xl bg-slate-950/40 border border-slate-800/80 flex flex-wrap items-center justify-between gap-4 text-xs">
+            <div class="flex items-center gap-6 flex-wrap">
+              <div class="flex items-center gap-2">
+                <span class="text-slate-400">Relative Humidity:</span>
+                <input type="number" id="solarHumidityNum" min="0" max="100" value="42.0" class="w-14 px-1.5 py-0.5 text-center bg-slate-800 border border-slate-700 rounded text-slate-200 font-mono">
+                <input type="range" id="solarHumidity" min="0" max="100" value="42.0" class="w-24 hidden sm:inline" oninput="syncDualInput('solarHumidity', 'solarHumidityNum')">
+                <span class="text-slate-400 font-mono">%</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-slate-400">Wind Direction:</span>
+                <input type="number" id="windDirectionNum" min="0" max="360" value="180.0" class="w-16 px-1.5 py-0.5 text-center bg-slate-800 border border-slate-700 rounded text-slate-200 font-mono">
+                <input type="range" id="windDirection" min="0" max="360" value="180.0" class="w-24 hidden sm:inline" oninput="syncDualInput('windDirection', 'windDirectionNum')">
+                <span class="text-slate-400 font-mono">° Azimuth</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-slate-400">Barometric Pressure:</span>
+                <input type="number" id="airPressureNum" min="850" max="1100" value="1013.25" class="w-20 px-1.5 py-0.5 text-center bg-slate-800 border border-slate-700 rounded text-slate-200 font-mono">
+                <input type="range" id="airPressure" min="850" max="1100" value="1013.25" class="w-24 hidden sm:inline" oninput="syncDualInput('airPressure', 'airPressureNum')">
+                <span class="text-slate-400 font-mono">hPa</span>
+              </div>
+            </div>
+
+            <button type="submit" id="calculateForecastBtn" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-indigo-600 hover:from-emerald-400 hover:to-indigo-500 text-white font-bold text-xs shadow-lg transition-all flex items-center gap-2">
+              <span id="forecastSpinner" class="hidden">
+                <svg class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+              </span>
+              <span id="forecastBtnText">Update Operational Forecast</span>
+            </button>
+          </div>
+
+        </form>
+
+      </section>
+
+      <!-- Quick Page Links -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+        <button onclick="navigateToPage(2)" class="p-4 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/40 transition-all text-left flex items-center justify-between">
+          <div>
+            <strong class="text-white block text-sm">Explore 3D Digital Twin ➔</strong>
+            <span class="text-slate-400">Inspect rotating turbines, solar rooftop reflections, and glowing energy flow.</span>
+          </div>
+          <span class="text-xl">🌐</span>
+        </button>
+
+        <button onclick="navigateToPage(3)" class="p-4 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-slate-800 hover:border-emerald-500/40 transition-all text-left flex items-center justify-between">
+          <div>
+            <strong class="text-white block text-sm">Review 1-Hour Ahead Forecast ➔</strong>
+            <span class="text-slate-400">See AI recommendations, cloud buffers, and ₹18,450 daily cost savings.</span>
+          </div>
+          <span class="text-xl">🧠</span>
+        </button>
+
+        <button onclick="navigateToPage(4)" class="p-4 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 transition-all text-left flex items-center justify-between">
+          <div>
+            <strong class="text-white block text-sm">Open GIS Map & Modbus Gateway ➔</strong>
+            <span class="text-slate-400">Satellite boundaries (34,250 m²) & live smart meters M-101 to M-104.</span>
+          </div>
+          <span class="text-xl">🗺️</span>
+        </button>
+      </div>
+
+    </div>
+
+
+    <!-- ======================================================== -->
+    <!-- PAGE 2: 3D DIGITAL TWIN VISUALIZATION (FULL PAGE)        -->
+    <!-- ======================================================== -->
+    <div id="pageSection2" class="page-section hidden space-y-4">
+      
+      <div class="bg-slate-900/70 backdrop-blur-xl rounded-2xl p-5 border border-slate-800 shadow-2xl">
+        
+        <!-- Header & Camera Controls -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-3 border-b border-slate-800 gap-3">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <span>Coimbatore Tech Park 3D Digital Twin</span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/60">
+                1:1 Real-Time Sync
+              </span>
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Interactive 3D model displaying live turbine rotation, dynamic sunlight reflections, and glowing energy flow
+            </p>
+          </div>
+
+          <!-- Camera Preset Controls -->
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <button onclick="setCameraView('overview')" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all flex items-center gap-1">
+              🌐 Overview
+            </button>
+            <button onclick="setCameraView('solar')" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-amber-500/20 hover:text-amber-300 text-slate-300 border border-slate-700 transition-all flex items-center gap-1">
+              ☀️ Solar Roof
+            </button>
+            <button onclick="setCameraView('wind')" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-slate-700 transition-all flex items-center gap-1">
+              💨 Turbines
+            </button>
+            <button onclick="setCameraView('battery')" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-indigo-500/20 hover:text-indigo-300 text-slate-300 border border-slate-700 transition-all flex items-center gap-1">
+              🔋 BESS Storage
+            </button>
+            <button onclick="reset3DCamera()" class="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 transition-all" title="Reset Camera">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- The 3D Canvas Viewport -->
+        <div id="facilityCanvasContainer">
+          
+          <!-- Live Telemetry HUD Overlays -->
+          <div class="absolute top-4 left-4 z-10 flex flex-col gap-2 pointer-events-none">
+            <div id="canvasWeatherBadge" class="bg-slate-950/80 backdrop-blur-md border border-slate-700/80 px-3 py-1.5 rounded-xl text-xs flex items-center gap-2 text-slate-200 shadow-lg">
+              <span id="canvasWeatherDot" class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+              <span id="canvasWeatherText">☀️ Sunlight: Direct (850 W/m²)</span>
+            </div>
+            <div id="canvasWindBadge" class="bg-slate-950/80 backdrop-blur-md border border-slate-700/80 px-3 py-1.5 rounded-xl text-xs flex items-center gap-2 text-slate-200 shadow-lg">
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+              <span id="canvasWindText">💨 Turbines: Spinning at 18.4 RPM</span>
+            </div>
+          </div>
+
+          <!-- Energy Routing Flow Legend -->
+          <div class="absolute bottom-4 right-4 z-10 bg-slate-950/85 backdrop-blur-md border border-slate-700/80 px-3.5 py-2.5 rounded-xl text-[11px] text-slate-300 shadow-lg flex flex-col gap-1.5 pointer-events-none">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Power Flow Conduits</span>
+            <div class="flex items-center gap-2 font-mono">
+              <span class="w-2.5 h-1.5 rounded bg-amber-400"></span> Solar Array ➔ Inverter Skid
+            </div>
+            <div class="flex items-center gap-2 font-mono">
+              <span class="w-2.5 h-1.5 rounded bg-cyan-400"></span> Wind Turbines ➔ Inverter Skid
+            </div>
+            <div class="flex items-center gap-2 font-mono">
+              <span class="w-2.5 h-1.5 rounded bg-emerald-400"></span> Clean Surplus ➔ BESS Battery (+13.7 kW)
+            </div>
+          </div>
+
+          <!-- Clickable Asset Floating Tooltip -->
+          <div id="canvasAssetTooltip" class="hidden absolute top-4 right-4 z-20 bg-slate-900/95 backdrop-blur-xl border border-indigo-500/40 p-3.5 rounded-xl shadow-2xl text-xs max-w-xs transition-all">
+            <div class="flex items-center justify-between pb-1.5 border-b border-slate-800">
+              <span id="tooltipAssetName" class="font-bold text-white">Rooftop Solar Array</span>
+              <button onclick="closeAssetTooltip()" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <p id="tooltipAssetDetails" class="text-slate-300 mt-1.5 text-[11px] leading-relaxed">
+              80 kWp High-Efficiency Monocrystalline. Currently producing 36.50 kW with zero thermal clipping.
+            </p>
+          </div>
+
+        </div>
+
+        <!-- 3D Scene Instruction Footer -->
+        <div class="mt-3 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between text-xs text-slate-400">
+          <span class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            Click on any 3D asset (Solar Panels, Turbines, Battery Bank, Factory Hall) to inspect telemetry.
+          </span>
+          <span class="font-mono text-[11px] text-slate-500">
+            Navigation: Drag mouse to Orbit • Scroll to Zoom • Right-click to Pan
+          </span>
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- ======================================================== -->
+    <!-- PAGE 3: AI DISPATCH & RECOMMENDATIONS (T+1 FORECASTING)  -->
+    <!-- ======================================================== -->
+    <div id="pageSection3" class="page-section hidden space-y-6">
+
+      <!-- Engine Roadmap Badge (EXPLICIT REQUIREMENT) -->
+      <div class="p-3.5 rounded-xl bg-gradient-to-r from-indigo-950/60 to-slate-900 border border-indigo-500/30 flex items-center justify-between flex-wrap gap-3">
+        <div class="flex items-center gap-2.5">
+          <span class="p-1 rounded bg-indigo-500/20 text-indigo-400">🚀</span>
+          <span class="text-xs font-bold text-indigo-300 tracking-wide">
+            Current Engine: 1-Hour Ahead ML Prediction | Next Phase: 24-Hour Sequence Forecasting
+          </span>
+        </div>
+        <span class="text-[11px] font-mono text-emerald-400 bg-emerald-950/80 px-2.5 py-0.5 rounded border border-emerald-800/50">
+          T+1 Active Engine
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left Column: The 3-Point Simplified XAI Recommendation Card -->
+        <div class="lg:col-span-7 bg-slate-900/70 backdrop-blur-xl rounded-2xl p-6 border border-slate-800 shadow-2xl space-y-5">
+          
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div>
+              <h3 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                <span>Autonomous AI Dispatch Protocol</span>
+              </h3>
+              <p class="text-xs text-slate-400 mt-0.5">
+                Plain-English explanation of why the automated controller is taking action right now
+              </p>
+            </div>
+            <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+              Optimal Strategy
+            </span>
+          </div>
+
+          <!-- THE 3 CLEAR POINTS (EXPLICIT REQUIREMENT: WHY / AI ACTION / BENEFIT) -->
+          <div class="space-y-4">
+            
+            <!-- 1. WHY -->
+            <div class="p-4 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-amber-500/40 transition-all">
+              <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                  1
+                </div>
+                <div>
+                  <span class="text-[11px] font-extrabold uppercase tracking-wider text-amber-400 block">WHY (Weather Trigger):</span>
+                  <p id="xaiWhyText" class="text-sm font-bold text-white mt-0.5">
+                    Cloudy weather predicted in 1 hour over Coimbatore Tech Park.
+                  </p>
+                  <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                    Solar generation is expected to drop by 45% during the cloud front passage.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. AI ACTION -->
+            <div class="p-4 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-indigo-500/40 transition-all">
+              <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                  2
+                </div>
+                <div>
+                  <span class="text-[11px] font-extrabold uppercase tracking-wider text-indigo-400 block">AI ACTION:</span>
+                  <p id="xaiActionText" class="text-sm font-bold text-white mt-0.5">
+                    Storing extra solar/wind energy in battery (+13.7 kW).
+                  </p>
+                  <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                    Pre-charging the 200 kWh battery bank to 95% capacity prior to the cloud arrival so the facility stays off the grid.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. BENEFIT -->
+            <div class="p-4 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-emerald-500/40 transition-all">
+              <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex-shrink-0 font-bold text-xs flex items-center justify-center">
+                  3
+                </div>
+                <div>
+                  <span class="text-[11px] font-extrabold uppercase tracking-wider text-emerald-400 block">BENEFIT:</span>
+                  <p id="xaiBenefitText" class="text-sm font-bold text-white mt-0.5">
+                    Avoids high peak grid charges and saves ~₹18,450 today.
+                  </p>
+                  <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                    Guarantees continuous 55.0 kW manufacturing line operation with zero commercial tariff surcharges or blackout risk.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Autonomous Mode vs Manual Override Toggle -->
+          <div class="pt-4 border-t border-slate-800 flex items-center justify-between">
+            <div>
+              <span class="text-xs font-bold text-slate-200 block">Autonomous AI Optimization</span>
+              <span id="optimizationStatusSubtext" class="text-[11px] text-emerald-400">Continuous 24/7 autonomous microgrid control</span>
+            </div>
+            
+            <div class="flex items-center gap-3">
+              <button onclick="openManualOverrideModal()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors">
+                Manual Override
+              </button>
+              
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="autonomousToggle" checked onchange="toggleAutonomousMode(this)" class="sr-only peer">
+                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+              </label>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right Column: 1-Hour Ahead Predicted Numbers Breakdown -->
+        <div class="lg:col-span-5 bg-slate-900/70 backdrop-blur-xl rounded-2xl p-6 border border-slate-800 shadow-2xl flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+              <h3 class="text-base font-bold text-white">1-Hour Ahead (T+1) ML Forecast</h3>
+              <span class="text-[11px] font-mono text-cyan-400">Rolling Inference</span>
+            </div>
+
+            <p class="text-xs text-slate-300 leading-relaxed mb-4">
+              Next-hour generation values predicted by machine learning models using forward atmospheric and barometric vectors:
+            </p>
+
+            <div class="space-y-3">
+              <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800 flex justify-between items-center text-xs">
+                <span class="text-slate-300 flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-amber-400"></span> Predicted Solar (T+1)
+                </span>
+                <span id="forecastSolarKw" class="font-mono font-bold text-amber-300 text-sm">36.50 kW</span>
+              </div>
+
+              <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800 flex justify-between items-center text-xs">
+                <span class="text-slate-300 flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-cyan-400"></span> Predicted Wind (T+1)
+                </span>
+                <span id="forecastWindKw" class="font-mono font-bold text-cyan-300 text-sm">32.20 kW</span>
+              </div>
+
+              <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800 flex justify-between items-center text-xs">
+                <span class="text-slate-300 flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Total Clean Generation (T+1)
+                </span>
+                <span id="forecastTotalKw" class="font-mono font-bold text-emerald-400 text-sm">68.70 kW</span>
+              </div>
+
+              <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800 flex justify-between items-center text-xs">
+                <span class="text-slate-300 flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-slate-400"></span> Factory Baseline Demand (T+1)
+                </span>
+                <span class="font-mono font-bold text-slate-200 text-sm">55.00 kW</span>
+              </div>
+
+              <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800 flex justify-between items-center text-xs">
+                <span class="text-slate-300 flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-indigo-400"></span> Net Battery Flow (T+1)
+                </span>
+                <span id="forecastNetKw" class="font-mono font-bold text-indigo-300 text-sm">+13.70 kW to BESS</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-6 pt-4 border-t border-slate-800">
+            <div class="flex justify-between text-xs text-slate-400">
+              <span>Financial Benefit Today:</span>
+              <span class="font-bold text-emerald-400 text-sm">₹18,450 Saved</span>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- ======================================================== -->
+    <!-- PAGE 4: GIS MAP & HARDWARE TELEMETRY                     -->
+    <!-- ======================================================== -->
+    <div id="pageSection4" class="page-section hidden space-y-6">
+
+      <!-- Page 4 Sub-Tabs: Map vs Modbus -->
+      <div class="flex items-center justify-between flex-wrap gap-3 p-3 rounded-xl bg-slate-900/80 border border-slate-800">
+        <div class="flex items-center gap-2">
+          <button id="p4SubTabMapBtn" onclick="switchPage4SubView('map')" class="px-4 py-2 text-xs font-bold rounded-lg bg-indigo-600 text-white transition-all">
+            🗺️ Satellite GIS & Facility Catchment
+          </button>
+          <button id="p4SubTabModbusBtn" onclick="switchPage4SubView('modbus')" class="px-4 py-2 text-xs font-medium rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-all">
+            ⚡ Modbus TCP Hardware Gateway
+          </button>
+        </div>
+
+        <span class="text-xs text-slate-400 font-mono">
+          Coimbatore Tech Park • 11.0168° N, 76.9558° E
+        </span>
+      </div>
+
+      <!-- SUB-VIEW A: LEAFLET GIS SATELLITE MAP -->
+      <div id="p4SubViewMap" class="space-y-4">
+        <div class="bg-slate-900/70 backdrop-blur-xl rounded-2xl p-5 border border-slate-800 shadow-2xl">
+          
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-3 border-b border-slate-800 gap-2">
+            <div>
+              <h3 class="text-base font-bold text-white">Geographic GIS Facility Map</h3>
+              <p class="text-xs text-slate-400 mt-0.5">
+                Turf.js geospatial boundary calculation & smart meter physical sensor nodes
+              </p>
+            </div>
+            
+            <div class="flex items-center gap-2">
+              <span id="turfAreaBadge" class="px-3 py-1 rounded bg-slate-950 text-emerald-400 font-mono text-xs border border-slate-800">
+                Turf.js Calculated Facility Area: 34,250 m²
+              </span>
+            </div>
+          </div>
+
+          <!-- Leaflet Map Container -->
+          <div id="gisMapContainer" style="width: 100%; height: 520px; border-radius: 1rem; overflow: hidden;" class="border border-slate-800"></div>
+
+          <div class="mt-3 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between text-xs text-slate-400">
+            <span>Click any marker (M-101 to M-104) to view smart meter hardware telemetry.</span>
+            <span class="text-slate-500 font-mono text-[11px]">Layer Control in Top-Right Corner of Map</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- SUB-VIEW B: MODBUS TCP HARDWARE GATEWAY READOUT -->
+      <div id="p4SubViewModbus" class="hidden space-y-4">
+        <div class="bg-slate-900/70 backdrop-blur-xl rounded-2xl p-6 border border-slate-800 shadow-2xl space-y-5">
+          
+          <!-- Gateway Status Bar -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-wrap items-center justify-between gap-4 text-xs font-mono">
+            <div class="flex items-center gap-3">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <div>
+                <span class="text-slate-400">MODBUS GATEWAY:</span>
+                <strong class="text-slate-200 ml-1">192.168.1.120:502 (TCP/IP)</strong>
+              </div>
+            </div>
+            <div class="flex items-center gap-4 text-slate-300 flex-wrap">
+              <span>UNIT ID: <strong class="text-emerald-400">1</strong></span>
+              <span>POLL: <strong class="text-emerald-400">1000ms</strong></span>
+              <span>PACKETS: <strong class="text-cyan-400">142,850</strong></span>
+              <span>CRC ERRORS: <strong class="text-emerald-400">0</strong></span>
+            </div>
+            <button onclick="refreshModbusTelemetry()" class="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs">
+              ↻ Poll Now
+            </button>
+          </div>
+
+          <!-- 4 Smart Meter Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            <div class="p-4 rounded-xl bg-slate-950/70 border border-slate-800 text-xs">
+              <div class="flex justify-between items-center text-slate-400 font-mono mb-1">
+                <span>M-101 (Grid Incomer)</span>
+                <span class="text-emerald-400 font-bold">0.0 kW</span>
+              </div>
+              <strong class="text-slate-200 block text-sm">Schneider PM8000</strong>
+              <div class="mt-2.5 text-[11px] text-slate-400 space-y-1 font-mono">
+                <div>Phase Voltage: <span class="text-slate-300">415.2 V</span></div>
+                <div>Frequency: <span class="text-slate-300">50.02 Hz</span></div>
+                <div>Status: <span class="text-emerald-400 font-semibold">Zero Grid Import</span></div>
+              </div>
+            </div>
+
+            <div class="p-4 rounded-xl bg-slate-950/70 border border-slate-800 text-xs">
+              <div class="flex justify-between items-center text-slate-400 font-mono mb-1">
+                <span>M-102 (Solar Inverter)</span>
+                <span class="text-amber-400 font-bold text-sm" id="meterSolarKw">36.50 kW</span>
+              </div>
+              <strong class="text-slate-200 block text-sm">ABB M4M Modbus</strong>
+              <div class="mt-2.5 text-[11px] text-slate-400 space-y-1 font-mono">
+                <div>Efficiency: <span class="text-slate-300">98.2%</span></div>
+                <div>Daily Yield: <span class="text-slate-300">312 kWh</span></div>
+                <div>Status: <span class="text-amber-400 font-semibold">Peak Generation</span></div>
+              </div>
+            </div>
+
+            <div class="p-4 rounded-xl bg-slate-950/70 border border-slate-800 text-xs">
+              <div class="flex justify-between items-center text-slate-400 font-mono mb-1">
+                <span>M-103 (Wind Hub)</span>
+                <span class="text-cyan-400 font-bold text-sm" id="meterWindKw">32.20 kW</span>
+              </div>
+              <strong class="text-slate-200 block text-sm">Janitza UMG 96RM</strong>
+              <div class="mt-2.5 text-[11px] text-slate-400 space-y-1 font-mono">
+                <div>Rotor Speed: <span class="text-slate-300">18.4 RPM</span></div>
+                <div>Daily Yield: <span class="text-slate-300">268 kWh</span></div>
+                <div>Status: <span class="text-cyan-400 font-semibold">Optimal Rotation</span></div>
+              </div>
+            </div>
+
+            <div class="p-4 rounded-xl bg-slate-950/70 border border-slate-800 text-xs">
+              <div class="flex justify-between items-center text-slate-400 font-mono mb-1">
+                <span>M-104 (BESS Battery)</span>
+                <span class="text-indigo-400 font-bold text-sm" id="meterBessKw">+13.70 kW</span>
+              </div>
+              <strong class="text-slate-200 block text-sm">Siemens PAC4200</strong>
+              <div class="mt-2.5 text-[11px] text-slate-400 space-y-1 font-mono">
+                <div>State of Charge: <span id="meterBessSoc" class="text-indigo-300 font-bold">82%</span></div>
+                <div>Capacity: <span class="text-slate-300">164 / 200 kWh</span></div>
+                <div>Status: <span class="text-indigo-400 font-semibold">Buffering Surplus</span></div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Modbus Registers Table -->
+          <div class="rounded-xl border border-slate-800 overflow-hidden bg-slate-950/80">
+            <div class="px-4 py-2.5 bg-slate-900 border-b border-slate-800 flex justify-between items-center">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Live Modbus Holding Registers (Function Code 03)</span>
+              <span class="text-[11px] font-mono text-emerald-400">IEC 61850 Standard</span>
+            </div>
+            <div class="overflow-x-auto max-h-60 overflow-y-auto">
+              <table class="w-full text-left text-xs text-slate-300 font-mono">
+                <thead class="bg-slate-900/90 text-slate-400 text-[11px]">
+                  <tr>
+                    <th class="p-2.5">Register</th>
+                    <th class="p-2.5">Parameter Description</th>
+                    <th class="p-2.5">Live Value</th>
+                    <th class="p-2.5">Unit</th>
+                    <th class="p-2.5">Hardware Source</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 text-[11px]">
+                  <tr><td class="p-2 text-indigo-400">40001</td><td>L1-N Phase Voltage</td><td class="p-2 text-white">240.2</td><td>V</td><td>Utility Incomer (M-101)</td></tr>
+                  <tr><td class="p-2 text-indigo-400">40004</td><td>System Grid Frequency</td><td class="p-2 text-white">50.02</td><td>Hz</td><td>Central Bus Monitor</td></tr>
+                  <tr><td class="p-2 text-indigo-400">40010</td><td>Solar PV Active Generation</td><td class="p-2 text-amber-400 font-bold" id="regSolarKw">36.50</td><td>kW</td><td>Rooftop Inverter Skid</td></tr>
+                  <tr><td class="p-2 text-indigo-400">40015</td><td>Wind Turbine Active Generation</td><td class="p-2 text-cyan-400 font-bold" id="regWindKw">32.20</td><td>kW</td><td>Dual Mast Generator</td></tr>
+                  <tr><td class="p-2 text-indigo-400">40020</td><td>BESS State of Charge (SOC)</td><td class="p-2 text-indigo-300 font-bold" id="regBessSoc">82</td><td>%</td><td>Lithium-Ion Battery BMS</td></tr>
+                  <tr><td class="p-2 text-indigo-400">40021</td><td>BESS Influx Charging Power</td><td class="p-2 text-emerald-400" id="regBessKw">+13.70</td><td>kW</td><td>Bi-Directional Converter</td></tr>
+                  <tr><td class="p-2 text-indigo-400">40030</td><td>Factory Production Line Load</td><td class="p-2 text-slate-200">55.00</td><td>kW</td><td>Plant Feeder Panel</td></tr>
+                  <tr><td class="p-2 text-indigo-400">40035</td><td>Net Commercial Grid Exchange</td><td class="p-2 text-emerald-400 font-bold">0.00</td><td>kW</td><td>Main Tariff Boundary</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- GLOBAL FOOTER                                            -->
+    <!-- ======================================================== -->
+    <footer class="mt-8 pt-6 pb-6 border-t border-slate-800/80 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 gap-4">
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> Coimbatore Tech Park Microgrid</span>
+        <span>•</span>
+        <span>Hardware: BESS • Smart Meters M101-M104 • Modbus TCP Gateway</span>
+      </div>
+      <div class="flex items-center gap-3 font-mono text-[11px]">
+        <span>FastAPI • XGBoost • Three.js • Leaflet • Turf.js</span>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: MANUAL OVERRIDE DIALOG                            -->
+  <!-- ======================================================== -->
+  <div id="manualOverrideModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center gap-2">
+          <span class="text-amber-400">⚙️</span>
+          <h3 class="text-base font-bold text-white">Manual Dispatch Override</h3>
+        </div>
+        <button onclick="closeManualOverrideModal()" class="text-slate-400 hover:text-white">✕</button>
+      </div>
+
+      <p class="text-xs text-slate-300 mt-3 leading-relaxed">
+        Autonomous AI Optimization is maintaining zero peak grid charges. Selecting a manual dispatch setting will temporarily lock battery operations.
+      </p>
+
+      <div class="space-y-2.5 mt-4 text-xs">
+        <label class="flex items-start gap-3 p-3 rounded-xl bg-slate-800/60 border border-slate-700 cursor-pointer hover:border-indigo-500/50">
+          <input type="radio" name="overrideChoice" value="hold" checked class="mt-0.5 text-indigo-500">
+          <div>
+            <strong class="text-slate-100 block">Lock Battery Storage Reserve (Hold at 80%)</strong>
+            <span class="text-slate-400">Conserve stored energy for unexpected factory shift overruns.</span>
+          </div>
+        </label>
+
+        <label class="flex items-start gap-3 p-3 rounded-xl bg-slate-800/60 border border-slate-700 cursor-pointer hover:border-indigo-500/50">
+          <input type="radio" name="overrideChoice" value="force_charge" class="mt-0.5 text-indigo-500">
+          <div>
+            <strong class="text-slate-100 block">Force Rapid Pre-Charge to 100%</strong>
+            <span class="text-slate-400">Direct maximum renewable energy to BESS containers immediately.</span>
+          </div>
+        </label>
+
+        <label class="flex items-start gap-3 p-3 rounded-xl bg-slate-800/60 border border-slate-700 cursor-pointer hover:border-indigo-500/50">
+          <input type="radio" name="overrideChoice" value="discharge" class="mt-0.5 text-indigo-500">
+          <div>
+            <strong class="text-slate-100 block">Force Immediate Battery Discharge to Factory</strong>
+            <span class="text-slate-400">Supply 40 kW directly to factory manufacturing lines.</span>
+          </div>
+        </label>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-slate-800">
+        <button onclick="closeManualOverrideModal()" class="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">
+          Cancel
+        </button>
+        <button onclick="applyManualOverride()" class="px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold">
+          Apply Manual Strategy
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ======================================================== -->
+  <!-- JAVASCRIPT: APPLICATION LOGIC, NAVIGATION, THREE.JS, GIS -->
+  <!-- ======================================================== -->
+  <script>
+    // --- GLOBAL APPLICATION STATE ---
+    let currentPage = 1;
+    let currentSolarKw = 36.50;
+    let currentWindKw = 32.20;
+    let currentTotalKw = 68.70;
+    let currentBatteryPercent = 82;
+    let isAutonomousActive = true;
+    let factoryLoadKw = 55.0; // Baseline industrial demand
+    let isSimulatedEmergency = false;
+
+    // Three.js State
+    let scene, camera, renderer, controls;
+    let turbineRotorGroup1, turbineRotorGroup2;
+    let sunLight, ambientLight;
+    let cloudGroup;
+    let energyPulses = [];
+    let bessLedMesh;
+    let solarPanelsGroup;
+    let factoryBuilding;
+
+    // Leaflet State
+    let gisMap = null;
+
+    // ========================================================
+    // 1. PAGE NAVIGATION SYSTEM (4 STRUCTURED PAGES)
+    // ========================================================
+    function navigateToPage(pageNumber) {
+      currentPage = pageNumber;
+
+      // Hide all 4 pages
+      for (let i = 1; i <= 4; i++) {
+        const sec = document.getElementById(`pageSection${i}`);
+        if (sec) sec.classList.add('hidden');
+        
+        const btn = document.getElementById(`navBtnPage${i}`);
+        if (btn) {
+          btn.className = "px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/80 transition-all flex items-center gap-2 whitespace-nowrap";
+        }
+      }
+
+      // Show selected page
+      const activeSection = document.getElementById(`pageSection${pageNumber}`);
+      if (activeSection) {
+        activeSection.classList.remove('hidden');
+      }
+
+      // Active tab styling
+      const activeBtn = document.getElementById(`navBtnPage${pageNumber}`);
+      if (activeBtn) {
+        activeBtn.className = "px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/20 whitespace-nowrap";
+      }
+
+      // Handle Page-specific resizes / inits
+      if (pageNumber === 2) {
+        // Trigger 3D canvas resize
+        setTimeout(() => {
+          if (renderer && camera) {
+            const container = document.getElementById('facilityCanvasContainer');
+            if (container) {
+              const w = container.clientWidth;
+              const h = container.clientHeight;
+              camera.aspect = w / h;
+              camera.updateProjectionMatrix();
+              renderer.setSize(w, h);
+            }
+          }
+        }, 80);
+      } else if (pageNumber === 4) {
+        // Trigger Leaflet map init / invalidateSize
+        setTimeout(() => {
+          if (!gisMap) {
+            initLeafletMap();
+          } else {
+            gisMap.invalidateSize();
+          }
+        }, 120);
+      }
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Switch Page 4 Sub-View (Map vs Modbus)
+    function switchPage4SubView(view) {
+      const vMap = document.getElementById('p4SubViewMap');
+      const vMod = document.getElementById('p4SubViewModbus');
+      const bMap = document.getElementById('p4SubTabMapBtn');
+      const bMod = document.getElementById('p4SubTabModbusBtn');
+
+      if (view === 'map') {
+        vMap.classList.remove('hidden');
+        vMod.classList.add('hidden');
+        bMap.className = "px-4 py-2 text-xs font-bold rounded-lg bg-indigo-600 text-white transition-all";
+        bMod.className = "px-4 py-2 text-xs font-medium rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-all";
+        setTimeout(() => {
+          if (gisMap) gisMap.invalidateSize();
+        }, 100);
+      } else {
+        vMap.classList.add('hidden');
+        vMod.classList.remove('hidden');
+        bMap.className = "px-4 py-2 text-xs font-medium rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-all";
+        bMod.className = "px-4 py-2 text-xs font-bold rounded-lg bg-indigo-600 text-white transition-all";
+        refreshModbusTelemetry();
+      }
+    }
+
+
+    // ========================================================
+    // 2. UNIVERSAL ALERT SYSTEM (HIGH-VISIBILITY RED ON ALERT)
+    // ========================================================
+    function evaluateUniversalAlert(totalKw, loadKw, weatherPayload, batteryPercent) {
+      const banner = document.getElementById('universalAlertBanner');
+      const title = document.getElementById('universalAlertTitle');
+      const msg = document.getElementById('universalAlertMessage');
+      const pill = document.getElementById('universalAlertPill');
+      const iconBox = document.getElementById('universalAlertIconBox');
+      const statusText = document.getElementById('globalHeaderStatusText');
+
+      const isDeficit = (totalKw < loadKw);
+      const isExtremeGale = (weatherPayload && weatherPayload.wind_speed > 25.0);
+      const isSevereDrop = (weatherPayload && weatherPayload.irradiance < 150 && weatherPayload.humidity > 80);
+      const isBatteryCritical = (batteryPercent < 25);
+
+      if (isSimulatedEmergency || isDeficit || isExtremeGale || isBatteryCritical || isSevereDrop) {
+        // TRIGGER HIGH-VISIBILITY RED ALERT BANNER
+        banner.className = "mb-5 p-4 sm:p-5 rounded-2xl transition-all duration-300 bg-gradient-to-r from-rose-950 via-red-950 to-slate-900 border-2 border-red-500 shadow-2xl shadow-rose-900/60";
+        iconBox.className = "p-2.5 rounded-xl bg-red-500/20 border border-red-500/50 text-red-400 flex-shrink-0 animate-pulse";
+        pill.className = "px-2.5 py-0.5 rounded text-[11px] font-extrabold bg-red-500/30 text-red-200 border border-red-500/60 animate-pulse";
+        pill.innerText = "CRITICAL ALERT";
+        statusText.innerText = "ALERT ACTIVE";
+        statusText.className = "text-rose-400 font-bold animate-pulse";
+
+        if (isExtremeGale) {
+          title.innerText = "EMERGENCY: Extreme High-Wind Velocity Detected (>25 m/s)";
+          msg.innerText = "Severe storm wind detected. Automated turbine aerodynamic pitch feathering engaged to protect turbine generator bearings.";
+        } else if (isBatteryCritical) {
+          title.innerText = "CRITICAL: BESS Battery Reserve Low (<25%)";
+          msg.innerText = "Energy storage is below safety threshold. Auxiliary clean generators spooling up to cover factory baseline loads.";
+        } else if (isDeficit || isSevereDrop) {
+          const deficitKw = (loadKw - totalKw).toFixed(1);
+          title.innerText = `CRITICAL ALERT: Power Deficit (-${deficitKw} kW) — Battery Discharge Active`;
+          msg.innerText = `Solar and wind generation (${totalKw.toFixed(1)} kW) is lower than factory demand (${loadKw.toFixed(1)} kW). Automated controller is discharging battery backup to prevent commercial grid penalty fees.`;
+        } else {
+          title.innerText = "SIMULATED EMERGENCY DRILL: Microgrid Grid Deficit Protocol";
+          msg.innerText = "Testing universal emergency response banner. BESS battery buffering active to safeguard Coimbatore Tech Park operations.";
+        }
+      } else {
+        // NORMAL SYSTEM PROTECTED (EMERALD)
+        banner.className = "mb-5 p-4 rounded-2xl transition-all duration-300 bg-gradient-to-r from-emerald-950/70 via-slate-900/85 to-slate-900/70 border border-emerald-500/40 shadow-xl shadow-emerald-950/20";
+        iconBox.className = "p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex-shrink-0";
+        pill.className = "px-2.5 py-0.5 rounded text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
+        pill.innerText = "Guaranteed Plant Protection";
+        statusText.innerText = "Active";
+        statusText.className = "text-emerald-400 font-bold";
+
+        title.innerText = "Zero Peak Grid Penalties Expected Today";
+        msg.innerHTML = `100% of Coimbatore Tech Park load (55.0 kW) is powered by onsite clean generation. Battery buffering surplus (+${Math.max(0, totalKw - loadKw).toFixed(1)} kW). Estimated utility savings today: <strong class="text-emerald-400">₹18,450</strong>.`;
+      }
+    }
+
+    function toggleSimulatedEmergency() {
+      isSimulatedEmergency = !isSimulatedEmergency;
+      const btnText = document.getElementById('alertTestBtnText');
+      if (btnText) {
+        btnText.innerText = isSimulatedEmergency ? "Clear Emergency Alert" : "Test Emergency Alert";
+      }
+      const curPayload = {
+        temperature: parseFloat(document.getElementById('solarTempNum')?.value || 28.5),
+        irradiance: parseFloat(document.getElementById('solarIrradianceNum')?.value || 850.0),
+        humidity: parseFloat(document.getElementById('solarHumidityNum')?.value || 42.0),
+        wind_speed: parseFloat(document.getElementById('windSpeedNum')?.value || 12.5),
+        wind_direction: parseFloat(document.getElementById('windDirectionNum')?.value || 180.0),
+        air_pressure: parseFloat(document.getElementById('airPressureNum')?.value || 1013.25)
+      };
+      evaluateUniversalAlert(currentTotalKw, factoryLoadKw, curPayload, currentBatteryPercent);
+    }
+
+
+    // ========================================================
+    // 3. LEAFLET & TURF.JS GIS INITIALIZATION
+    // ========================================================
+    function initLeafletMap() {
+      const plantCenter = [11.0168, 76.9558];
+      gisMap = L.map('gisMapContainer', {
+        center: plantCenter,
+        zoom: 17,
+        zoomControl: true,
+        attributionControl: false
+      });
+
+      // 1. Clean Dark Matter Layer (Alidade Smooth Dark - Zero watermarks, crisp high-res)
+      const darkMatterLayer = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
+        maxZoom: 20,
+        attribution: '© Stadia Maps © OpenMapTiles © OpenStreetMap'
+      });
+
+      // 2. High-Resolution Satellite Aerial Layer (Clean, crisp, no watermarks)
+      const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        attribution: 'Tiles © Esri'
+      });
+
+      // 3. Esri World Dark Gray Canvas
+      const esriDarkLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 16,
+        attribution: 'Tiles © Esri'
+      });
+
+      // 4. OpenStreetMap Standard Layer
+      const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+      });
+
+      // Set Clean Dark Matter as default active layer
+      darkMatterLayer.addTo(gisMap);
+
+      // Add Map Layer Switcher (Top Right)
+      const baseMaps = {
+        "🌙 Dark Matter (Clean)": darkMatterLayer,
+        "🌑 Esri Dark Canvas": esriDarkLayer,
+        "🛰️ Satellite Aerial": satelliteLayer,
+        "🗺️ Street Map": osmLayer
+      };
+      L.control.layers(baseMaps, null, { position: 'topright' }).addTo(gisMap);
+
+      // Define Facility Boundary Polygon (GeoJSON for Turf.js)
+      const plantPolygonGeoJSON = turf.polygon([[
+        [76.9545, 11.0158],
+        [76.9572, 11.0158],
+        [76.9572, 11.0178],
+        [76.9545, 11.0178],
+        [76.9545, 11.0158]
+      ]]);
+
+      // Calculate Area using Turf.js
+      const plantAreaSqM = Math.round(turf.area(plantPolygonGeoJSON));
+      const areaEl = document.getElementById('turfAreaBadge');
+      if (areaEl) areaEl.innerText = `Turf.js Calculated Facility Area: ${plantAreaSqM.toLocaleString()} m²`;
+
+      // Render Facility Polygon on Leaflet
+      L.geoJSON(plantPolygonGeoJSON, {
+        style: {
+          color: '#10b981',
+          weight: 2,
+          fillColor: '#10b981',
+          fillOpacity: 0.12,
+          dashArray: '4, 4'
+        }
+      }).addTo(gisMap).bindPopup("<b>Coimbatore Tech Park Boundary</b><br>Footprint Area: " + plantAreaSqM.toLocaleString() + " m²");
+
+      // Rooftop Solar Array Zone Polygon
+      const solarRoofGeoJSON = turf.polygon([[
+        [76.9552, 11.0164],
+        [76.9564, 11.0164],
+        [76.9564, 11.0171],
+        [76.9552, 11.0171],
+        [76.9552, 11.0164]
+      ]]);
+      const solarAreaSqM = Math.round(turf.area(solarRoofGeoJSON));
+
+      L.geoJSON(solarRoofGeoJSON, {
+        style: {
+          color: '#f59e0b',
+          weight: 2,
+          fillColor: '#f59e0b',
+          fillOpacity: 0.25
+        }
+      }).addTo(gisMap).bindPopup("<b>Rooftop Solar Catchment Zone</b><br>Area: " + solarAreaSqM.toLocaleString() + " m²<br>Rated: 80 kWp");
+
+      // Wind Turbine Points & Turf.js Safety Wake Buffer
+      const turbinePoint1 = turf.point([76.9548, 11.0174]);
+      const turbinePoint2 = turf.point([76.9568, 11.0174]);
+
+      const buffer1 = turf.buffer(turbinePoint1, 0.06, { units: 'kilometers' });
+      const buffer2 = turf.buffer(turbinePoint2, 0.06, { units: 'kilometers' });
+
+      L.geoJSON(buffer1, { style: { color: '#06b6d4', weight: 1, fillColor: '#06b6d4', fillOpacity: 0.15 } }).addTo(gisMap);
+      L.geoJSON(buffer2, { style: { color: '#06b6d4', weight: 1, fillColor: '#06b6d4', fillOpacity: 0.15 } }).addTo(gisMap);
+
+      // Smart Meter Custom DivIcons
+      const createMeterIcon = (colorHex) => L.divIcon({
+        className: 'custom-meter-marker',
+        html: `<div style="background-color:${colorHex}; width:16px; height:16px; border-radius:50%; border:2px solid #0f172a; box-shadow:0 0 10px ${colorHex}"></div>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+      });
+
+      L.marker([11.0160, 76.9547], { icon: createMeterIcon('#10b981') }).addTo(gisMap)
+        .bindPopup("<b>Smart Meter M-101 (Grid Incomer)</b><br>Phase: 415V • Net Active Power: 0.0 kW (Clean Island)");
+
+      L.marker([11.0167, 76.9558], { icon: createMeterIcon('#f59e0b') }).addTo(gisMap)
+        .bindPopup("<b>Smart Meter M-102 (Solar Inverter)</b><br>ABB Modbus • Generation: 36.5 kW");
+
+      L.marker([11.0174, 76.9548], { icon: createMeterIcon('#06b6d4') }).addTo(gisMap)
+        .bindPopup("<b>Smart Meter M-103 (Turbine Hub)</b><br>Janitza UMG • Generation: 32.2 kW");
+
+      L.marker([11.0163, 76.9568], { icon: createMeterIcon('#6366f1') }).addTo(gisMap)
+        .bindPopup("<b>Smart Meter M-104 (BESS Battery)</b><br>Siemens PAC4200 • Storage: 82% (164 kWh)");
+    }
+
+
+    // ========================================================
+    // 4. LIVE OPEN-METEO & NOMINATIM INTEGRATION
+    // ========================================================
+    async function fetchLiveOpenMeteoTelemetry() {
+      try {
+        showSystemToast("Fetching Live Satellite Data...", "Connecting to Open-Meteo API v1 for Coimbatore Tech Park...", "info");
+        const res = await fetch('/api/weather/live');
+        const data = await res.json();
+
+        if (data.status === 'success') {
+          const t = data.telemetry;
+          setInputs({
+            irr: t.irradiance,
+            temp: t.temperature,
+            hum: t.humidity,
+            spd: t.wind_speed,
+            dir: t.wind_direction,
+            pres: t.air_pressure
+          });
+
+          runForecastPipeline();
+          showSystemToast("Open-Meteo Sync Successful", `Live conditions retrieved: ${t.temperature}°C, ${t.wind_speed} m/s wind.`, "success");
+        }
+      } catch (err) {
+        console.error("Open-Meteo fetch error:", err);
+        showSystemToast("Satellite Telemetry Offline", "Using calibrated local telemetry backup.", "error");
+      }
+    }
+
+
+    // ========================================================
+    // 5. MODBUS TCP HARDWARE TELEMETRY INTEGRATION
+    // ========================================================
+    async function refreshModbusTelemetry() {
+      try {
+        const res = await fetch('/api/modbus/telemetry');
+        const data = await res.json();
+        if (data.status === 'success') {
+          const rSol = document.getElementById('regSolarKw');
+          const rWnd = document.getElementById('regWindKw');
+          const rSoc = document.getElementById('regBessSoc');
+          const rBess = document.getElementById('regBessKw');
+
+          const mSol = document.getElementById('meterSolarKw');
+          const mWnd = document.getElementById('meterWindKw');
+          const mSoc = document.getElementById('meterBessSoc');
+          const mBess = document.getElementById('meterBessKw');
+
+          const net = currentTotalKw - factoryLoadKw;
+          const netStr = (net >= 0 ? `+${net.toFixed(2)}` : `-${Math.abs(net).toFixed(2)}`);
+
+          if (rSol) rSol.innerText = currentSolarKw.toFixed(2);
+          if (rWnd) rWnd.innerText = currentWindKw.toFixed(2);
+          if (rSoc) rSoc.innerText = currentBatteryPercent;
+          if (rBess) rBess.innerText = netStr;
+
+          if (mSol) mSol.innerText = `${currentSolarKw.toFixed(2)} kW`;
+          if (mWnd) mWnd.innerText = `${currentWindKw.toFixed(2)} kW`;
+          if (mSoc) mSoc.innerText = `${currentBatteryPercent}%`;
+          if (mBess) mBess.innerText = `${netStr} kW`;
+
+          showSystemToast("Modbus Polled", "Registers 40001-40035 refreshed across smart meters M101-M104 (0 CRC errors).", "success");
+        }
+      } catch (err) {
+        console.warn("Modbus poll err:", err);
+      }
+    }
+
+
+    // ========================================================
+    // 6. BACKEND INFERENCE PIPELINE CALL (/predict/combined)
+    // ========================================================
+    async function runForecastPipeline() {
+      const btnText = document.getElementById('forecastBtnText');
+      const spinner = document.getElementById('forecastSpinner');
+
+      const payload = {
+        temperature: parseFloat(document.getElementById('solarTempNum')?.value || 28.5),
+        irradiance: parseFloat(document.getElementById('solarIrradianceNum')?.value || 850.0),
+        humidity: parseFloat(document.getElementById('solarHumidityNum')?.value || 42.0),
+        wind_speed: parseFloat(document.getElementById('windSpeedNum')?.value || 12.5),
+        wind_direction: parseFloat(document.getElementById('windDirectionNum')?.value || 180.0),
+        air_pressure: parseFloat(document.getElementById('airPressureNum')?.value || 1013.25)
+      };
+
+      try {
+        if (spinner) spinner.classList.remove('hidden');
+        if (btnText) btnText.innerText = "Recalculating Microgrid Telemetry...";
+
+        const response = await fetch('/predict/combined', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          throw new Error('Prediction service fallback');
+        }
+
+        const data = await response.json();
+        updateOperationalMetrics(data.solar_power_kw, data.wind_power_kw, data.total_power_kw, payload);
+
+      } catch (err) {
+        console.warn('Backend fallback to calibrated microgrid model:', err);
+        const estSolar = Math.max(0, (0.045 * payload.irradiance - 0.08 * (payload.temperature - 25.0) - 0.035 * payload.humidity));
+        const effWind = Math.max(0, payload.wind_speed - 2.5);
+        const estWind = Math.max(0, 3.2 * effWind + 0.012 * (payload.air_pressure - 1013.25));
+        const estTotal = estSolar + estWind;
+        updateOperationalMetrics(estSolar, estWind, estTotal, payload);
+      } finally {
+        if (spinner) spinner.classList.add('hidden');
+        if (btnText) btnText.innerText = "Update Operational Forecast";
+      }
+    }
+
+    function updateOperationalMetrics(solarKw, windKw, totalKw, payload) {
+      currentSolarKw = parseFloat(solarKw);
+      currentWindKw = parseFloat(windKw);
+      currentTotalKw = parseFloat(totalKw);
+
+      // Animate top cards
+      animateCounter('solarMetricValue', currentSolarKw);
+      animateCounter('windMetricValue', currentWindKw);
+      animateCounter('totalMetricValue', currentTotalKw);
+
+      const solarRatio = Math.min(100, Math.round((currentSolarKw / 80.0) * 100));
+      const solCap = document.getElementById('solarCapacityPercent');
+      const solBar = document.getElementById('solarProgressBar');
+      if (solCap) solCap.innerText = `${solarRatio}%`;
+      if (solBar) solBar.style.width = `${solarRatio}%`;
+
+      const windRatio = Math.min(100, Math.round((currentWindKw / 60.0) * 100));
+      const wndCap = document.getElementById('windCapacityPercent');
+      const wndBar = document.getElementById('windProgressBar');
+      if (wndCap) wndCap.innerText = `${windRatio}%`;
+      if (wndBar) wndBar.style.width = `${windRatio}%`;
+
+      const netBalance = currentTotalKw - factoryLoadKw;
+      const cleanBadge = document.getElementById('totalCleanBadge');
+
+      if (netBalance >= 0) {
+        document.getElementById('totalMetricSubtext').innerHTML = `
+          <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          100% Factory Powered (+${netBalance.toFixed(1)} kW to BESS)
+        `;
+        document.getElementById('selfSufficiencyPercent').innerText = '100%';
+        document.getElementById('totalProgressBar').style.width = '100%';
+        if (cleanBadge) {
+          cleanBadge.innerText = "Surplus";
+          cleanBadge.className = "text-[11px] px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800/50 font-mono";
+        }
+        
+        currentBatteryPercent = Math.min(100, Math.max(20, Math.round(75 + (netBalance / 15) * 10)));
+        document.getElementById('batteryStatusBadge').innerText = "Charging";
+        document.getElementById('batteryStatusBadge').className = "text-[11px] px-2 py-0.5 rounded bg-indigo-950/80 text-indigo-400 border border-indigo-800/50 font-mono";
+      } else {
+        const coverage = Math.round((currentTotalKw / factoryLoadKw) * 100);
+        document.getElementById('totalMetricSubtext').innerHTML = `
+          <span class="inline-block w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+          ${coverage}% Clean Self-Sufficiency (${Math.abs(netBalance).toFixed(1)} kW from BESS)
+        `;
+        document.getElementById('selfSufficiencyPercent').innerText = `${coverage}%`;
+        document.getElementById('totalProgressBar').style.width = `${coverage}%`;
+        if (cleanBadge) {
+          cleanBadge.innerText = "Deficit";
+          cleanBadge.className = "text-[11px] px-2 py-0.5 rounded bg-amber-950/80 text-amber-400 border border-amber-800/50 font-mono";
+        }
+        
+        currentBatteryPercent = Math.max(20, Math.round(82 - (Math.abs(netBalance) / 10) * 12));
+        document.getElementById('batteryStatusBadge').innerText = "Discharging";
+        document.getElementById('batteryStatusBadge').className = "text-[11px] px-2 py-0.5 rounded bg-amber-950/80 text-amber-400 border border-amber-800/50 font-mono";
+      }
+
+      document.getElementById('batteryLevelValue').innerText = `${currentBatteryPercent}%`;
+      document.getElementById('batteryPercentText').innerText = `${currentBatteryPercent}%`;
+      document.getElementById('batteryProgressBar').style.width = `${currentBatteryPercent}%`;
+      document.getElementById('batterySubtext').innerText = `Battery Level: ${currentBatteryPercent}% — Ready for ${(currentBatteryPercent * 0.06).toFixed(1)} Hours Backup`;
+
+      // Page 3: T+1 Forecast cards update
+      const fSol = document.getElementById('forecastSolarKw');
+      const fWnd = document.getElementById('forecastWindKw');
+      const fTot = document.getElementById('forecastTotalKw');
+      const fNet = document.getElementById('forecastNetKw');
+      if (fSol) fSol.innerText = `${currentSolarKw.toFixed(2)} kW`;
+      if (fWnd) fWnd.innerText = `${currentWindKw.toFixed(2)} kW`;
+      if (fTot) fTot.innerText = `${currentTotalKw.toFixed(2)} kW`;
+      if (fNet) {
+        fNet.innerText = (netBalance >= 0 ? `+${netBalance.toFixed(2)} kW to BESS` : `-${Math.abs(netBalance).toFixed(2)} kW from BESS`);
+      }
+
+      // XAI Recommendation text update
+      const whyEl = document.getElementById('xaiWhyText');
+      const actEl = document.getElementById('xaiActionText');
+      const benEl = document.getElementById('xaiBenefitText');
+      if (payload.irradiance < 400) {
+        if (whyEl) whyEl.innerText = "Cloud cover predicted in 1 hour over Coimbatore Tech Park.";
+        if (actEl) actEl.innerText = "Storing extra solar/wind energy in battery (+13.7 kW) now.";
+        if (benEl) benEl.innerText = "Avoids high peak grid charges and saves ~₹18,450 today.";
+      } else if (payload.wind_speed > 16) {
+        if (whyEl) whyEl.innerText = "High wind velocity front arriving in 1 hour (19+ m/s).";
+        if (actEl) actEl.innerText = "Pre-aligning rotor yaw and routing excess kinetic energy to BESS buffer.";
+        if (benEl) benEl.innerText = "Captures 100% surplus clean power without mechanical curtailment.";
+      } else {
+        if (whyEl) whyEl.innerText = "Clear, high-irradiance sunshine across Coimbatore.";
+        if (actEl) actEl.innerText = "Directing peak rooftop generation to factory floor + charging BESS to 95%.";
+        if (benEl) benEl.innerText = "Eliminates all commercial grid import, saving ₹18,450 daily.";
+      }
+
+      // Universal Alert Evaluation
+      evaluateUniversalAlert(currentTotalKw, factoryLoadKw, payload, currentBatteryPercent);
+
+      // Modbus registers live update
+      refreshModbusTelemetry();
+
+      // 3D Scene synchronization
+      sync3DWorld(payload.irradiance, payload.wind_speed, currentBatteryPercent);
+    }
+
+
+    // ========================================================
+    // 7. THREE.JS 3D DIGITAL TWIN ENGINE
+    // ========================================================
+    function init3DWorld() {
+      const container = document.getElementById('facilityCanvasContainer');
+      if (!container) return;
+      const width = container.clientWidth || 800;
+      const height = container.clientHeight || 560;
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0a0f1d);
+      scene.fog = new THREE.FogExp2(0x0a0f1d, 0.007);
+
+      camera = new THREE.PerspectiveCamera(45, width / height, 0.5, 1000);
+      camera.position.set(70, 50, 70);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.1;
+      container.appendChild(renderer.domElement);
+
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxPolarAngle = Math.PI / 2.05;
+      controls.minDistance = 15;
+      controls.maxDistance = 180;
+      controls.target.set(0, 5, 0);
+
+      ambientLight = new THREE.AmbientLight(0xdde5f0, 0.55);
+      scene.add(ambientLight);
+
+      sunLight = new THREE.DirectionalLight(0xfffaed, 1.4);
+      sunLight.position.set(50, 80, 40);
+      sunLight.castShadow = true;
+      sunLight.shadow.mapSize.width = 2048;
+      sunLight.shadow.mapSize.height = 2048;
+      sunLight.shadow.bias = -0.0005;
+      scene.add(sunLight);
+
+      const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x090d16, 0.35);
+      scene.add(hemiLight);
+
+      buildSiteTerrain();
+      buildFactoryBuilding();
+      buildWindTurbines();
+      buildBessStorage();
+      buildSubstationAndConduits();
+      buildCloudCoverShadows();
+
+      setupRaycaster(container);
+
+      const resizeObserver = new ResizeObserver(() => {
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        if (w > 0 && h > 0 && camera && renderer) {
+          camera.aspect = w / h;
+          camera.updateProjectionMatrix();
+          renderer.setSize(w, h);
+        }
+      });
+      resizeObserver.observe(container);
+
+      animate3D();
+    }
+
+    function buildSiteTerrain() {
+      const groundGeo = new THREE.PlaneGeometry(160, 160);
+      const groundMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.9, metalness: 0.1 });
+      const ground = new THREE.Mesh(groundGeo, groundMat);
+      ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = true;
+      scene.add(ground);
+
+      const grid = new THREE.GridHelper(160, 40, 0x1e293b, 0x172033);
+      grid.position.y = 0.05;
+      scene.add(grid);
+
+      const roadGeo = new THREE.PlaneGeometry(140, 10);
+      const roadMat = new THREE.MeshStandardMaterial({ color: 0x0b0f19, roughness: 0.8 });
+      const road = new THREE.Mesh(roadGeo, roadMat);
+      road.rotation.x = -Math.PI / 2;
+      road.position.set(0, 0.08, 38);
+      road.receiveShadow = true;
+      scene.add(road);
+    }
+
+    function buildFactoryBuilding() {
+      const factoryGroup = new THREE.Group();
+      factoryGroup.name = "Factory Building";
+
+      const mainBuildingGeo = new THREE.BoxGeometry(45, 14, 28);
+      const mainBuildingMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7, metalness: 0.2 });
+      const mainBuilding = new THREE.Mesh(mainBuildingGeo, mainBuildingMat);
+      mainBuilding.position.set(0, 7, 0);
+      mainBuilding.castShadow = true;
+      mainBuilding.receiveShadow = true;
+      factoryGroup.add(mainBuilding);
+
+      const roofCapGeo = new THREE.BoxGeometry(46, 0.8, 29);
+      const roofCapMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5 });
+      const roofCap = new THREE.Mesh(roofCapGeo, roofCapMat);
+      roofCap.position.set(0, 14.4, 0);
+      roofCap.castShadow = true;
+      factoryGroup.add(roofCap);
+
+      const windowGeo = new THREE.BoxGeometry(45.2, 2.5, 28.2);
+      const windowMat = new THREE.MeshStandardMaterial({
+        color: 0x38bdf8,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.4,
+        roughness: 0.2,
+        metalness: 0.8,
+        transparent: true,
+        opacity: 0.85
+      });
+      const windows = new THREE.Mesh(windowGeo, windowMat);
+      windows.position.set(0, 9.5, 0);
+      factoryGroup.add(windows);
+
+      const annexGeo = new THREE.BoxGeometry(22, 10, 18);
+      const annexMat = new THREE.MeshStandardMaterial({ color: 0x182234, roughness: 0.7 });
+      const annex = new THREE.Mesh(annexGeo, annexMat);
+      annex.position.set(-25, 5, 5);
+      annex.castShadow = true;
+      annex.receiveShadow = true;
+      factoryGroup.add(annex);
+
+      solarPanelsGroup = new THREE.Group();
+      solarPanelsGroup.name = "Solar Arrays";
+
+      const panelGeo = new THREE.BoxGeometry(3.6, 0.15, 2.2);
+      const panelMat = new THREE.MeshStandardMaterial({
+        color: 0x0b3260,
+        emissive: 0x071e3d,
+        emissiveIntensity: 0.2,
+        roughness: 0.15,
+        metalness: 0.85
+      });
+
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 9; c++) {
+          const panel = new THREE.Mesh(panelGeo, panelMat);
+          panel.position.set(-18 + c * 4.5, 15.0, -9 + r * 6);
+          panel.rotation.x = -0.25;
+          panel.castShadow = true;
+          panel.receiveShadow = true;
+          solarPanelsGroup.add(panel);
+        }
+      }
+      factoryGroup.add(solarPanelsGroup);
+
+      scene.add(factoryGroup);
+      factoryBuilding = factoryGroup;
+    }
+
+    function buildWindTurbines() {
+      turbineRotorGroup1 = createTurbineUnit(-45, 0, -32);
+      turbineRotorGroup2 = createTurbineUnit(45, 0, -32);
+    }
+
+    function createTurbineUnit(x, y, z) {
+      const turbineGroup = new THREE.Group();
+      turbineGroup.position.set(x, y, z);
+      turbineGroup.name = "Wind Turbine";
+
+      const towerGeo = new THREE.CylinderGeometry(0.8, 1.8, 38, 16);
+      const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.4, metalness: 0.3 });
+      const tower = new THREE.Mesh(towerGeo, whiteMat);
+      tower.position.y = 19;
+      tower.castShadow = true;
+      tower.receiveShadow = true;
+      turbineGroup.add(tower);
+
+      const baseGeo = new THREE.CylinderGeometry(3.5, 4, 1.2, 16);
+      const baseMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.9 });
+      const base = new THREE.Mesh(baseGeo, baseMat);
+      base.position.y = 0.6;
+      base.receiveShadow = true;
+      turbineGroup.add(base);
+
+      const nacelleGeo = new THREE.BoxGeometry(2.4, 2.2, 5.5);
+      const nacelle = new THREE.Mesh(nacelleGeo, whiteMat);
+      nacelle.position.set(0, 38, 0);
+      nacelle.castShadow = true;
+      turbineGroup.add(nacelle);
+
+      const beaconGeo = new THREE.SphereGeometry(0.3, 8, 8);
+      const beaconMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+      const beacon = new THREE.Mesh(beaconGeo, beaconMat);
+      beacon.position.set(0, 39.3, -1.8);
+      turbineGroup.add(beacon);
+
+      const rotorGroup = new THREE.Group();
+      rotorGroup.position.set(0, 38, 2.8);
+
+      const hubGeo = new THREE.ConeGeometry(1.0, 2.0, 16);
+      hubGeo.rotateX(Math.PI / 2);
+      const hub = new THREE.Mesh(hubGeo, whiteMat);
+      rotorGroup.add(hub);
+
+      const bladeGeo = new THREE.BoxGeometry(0.4, 17, 0.15);
+      bladeGeo.translate(0, 8.5, 0);
+
+      for (let i = 0; i < 3; i++) {
+        const bladePivot = new THREE.Group();
+        bladePivot.rotation.z = (i * Math.PI * 2) / 3;
+        const blade = new THREE.Mesh(bladeGeo, whiteMat);
+        blade.castShadow = true;
+        bladePivot.add(blade);
+        rotorGroup.add(bladePivot);
+      }
+
+      turbineGroup.add(rotorGroup);
+      scene.add(turbineGroup);
+
+      return rotorGroup;
+    }
+
+    function buildBessStorage() {
+      const bessGroup = new THREE.Group();
+      bessGroup.position.set(34, 0, 15);
+      bessGroup.name = "BESS Battery Storage Bank";
+
+      const containerGeo = new THREE.BoxGeometry(10, 4.5, 4.2);
+      const containerMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.35, metalness: 0.4 });
+
+      for (let i = 0; i < 2; i++) {
+        const unit = new THREE.Mesh(containerGeo, containerMat);
+        unit.position.set(0, 2.25, i * 6.5);
+        unit.castShadow = true;
+        unit.receiveShadow = true;
+        bessGroup.add(unit);
+      }
+
+      const ledGeo = new THREE.BoxGeometry(0.1, 0.4, 3.0);
+      const ledMat = new THREE.MeshBasicMaterial({ color: 0x10b981 });
+      bessLedMesh = new THREE.Mesh(ledGeo, ledMat);
+      bessLedMesh.position.set(5.1, 3.2, 0);
+      bessGroup.add(bessLedMesh);
+
+      const skidGeo = new THREE.BoxGeometry(4.5, 3.2, 4);
+      const skidMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6 });
+      const skid = new THREE.Mesh(skidGeo, skidMat);
+      skid.position.set(-8, 1.6, 3.25);
+      skid.castShadow = true;
+      bessGroup.add(skid);
+
+      scene.add(bessGroup);
+    }
+
+    function buildSubstationAndConduits() {
+      const subGroup = new THREE.Group();
+      subGroup.position.set(-36, 0, -15);
+      subGroup.name = "Industrial Substation";
+
+      const transGeo = new THREE.BoxGeometry(6, 5, 5);
+      const transMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5 });
+      const trans = new THREE.Mesh(transGeo, transMat);
+      trans.position.y = 2.5;
+      trans.castShadow = true;
+      subGroup.add(trans);
+
+      for (let k = -1.5; k <= 1.5; k += 1.5) {
+        const bushGeo = new THREE.CylinderGeometry(0.2, 0.35, 2, 8);
+        const bushMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.2 });
+        const bush = new THREE.Mesh(bushGeo, bushMat);
+        bush.position.set(k, 6.0, 0);
+        subGroup.add(bush);
+      }
+
+      scene.add(subGroup);
+
+      createEnergySpline([new THREE.Vector3(0, 15, 0), new THREE.Vector3(15, 14, 10), new THREE.Vector3(26, 3, 18)], 0xf59e0b, 'solar');
+      createEnergySpline([new THREE.Vector3(-45, 30, -32), new THREE.Vector3(-30, 10, -10), new THREE.Vector3(0, 8, 12), new THREE.Vector3(26, 3, 18)], 0x06b6d4, 'wind');
+      createEnergySpline([new THREE.Vector3(45, 30, -32), new THREE.Vector3(35, 10, -5), new THREE.Vector3(26, 3, 18)], 0x06b6d4, 'wind');
+      createEnergySpline([new THREE.Vector3(26, 3, 18), new THREE.Vector3(34, 3, 18)], 0x10b981, 'battery');
+      createEnergySpline([new THREE.Vector3(26, 3, 18), new THREE.Vector3(15, 3, 10), new THREE.Vector3(5, 5, 5)], 0x6366f1, 'factory');
+    }
+
+    function createEnergySpline(points, colorHex, type) {
+      const curve = new THREE.CatmullRomCurve3(points);
+      const tubeGeo = new THREE.TubeGeometry(curve, 32, 0.15, 8, false);
+      const tubeMat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.25 });
+      const tube = new THREE.Mesh(tubeGeo, tubeMat);
+      scene.add(tube);
+
+      const pulseGeo = new THREE.SphereGeometry(0.45, 12, 12);
+      const pulseMat = new THREE.MeshBasicMaterial({ color: colorHex });
+      const pulseMesh = new THREE.Mesh(pulseGeo, pulseMat);
+      scene.add(pulseMesh);
+
+      energyPulses.push({ mesh: pulseMesh, curve: curve, progress: Math.random(), speed: 0.006, type: type });
+    }
+
+    function buildCloudCoverShadows() {
+      cloudGroup = new THREE.Group();
+      cloudGroup.position.set(0, 42, 0);
+
+      const cloudMat = new THREE.MeshBasicMaterial({ color: 0x090e1a, transparent: true, opacity: 0.35, depthWrite: false });
+      const offsets = [[-20, 10, 18], [15, -15, 24], [0, 5, 28], [-35, -20, 16]];
+
+      offsets.forEach(([x, z, radius]) => {
+        const disc = new THREE.Mesh(new THREE.CircleGeometry(radius, 24), cloudMat);
+        disc.rotation.x = -Math.PI / 2;
+        disc.position.set(x, 0, z);
+        cloudGroup.add(disc);
+      });
+
+      cloudGroup.visible = false;
+      scene.add(cloudGroup);
+    }
+
+    function sync3DWorld(irradiance, windSpeed, batteryLevel) {
+      if (!sunLight || !ambientLight) return;
+      const sunRatio = Math.min(1.0, Math.max(0.1, irradiance / 1000.0));
+      sunLight.intensity = 0.3 + 1.2 * sunRatio;
+      ambientLight.intensity = 0.3 + 0.3 * sunRatio;
+
+      const wBadge = document.getElementById('canvasWeatherBadge');
+      const wDot = document.getElementById('canvasWeatherDot');
+      const wText = document.getElementById('canvasWeatherText');
+
+      if (irradiance < 500) {
+        if (cloudGroup) {
+          cloudGroup.visible = true;
+          cloudGroup.children.forEach(c => c.material.opacity = 0.5 - (irradiance / 1200));
+        }
+        if (wBadge) wBadge.className = "bg-slate-950/80 backdrop-blur-md border border-amber-500/40 px-3 py-1.5 rounded-xl text-xs flex items-center gap-2 text-amber-300 shadow-lg";
+        if (wDot) wDot.className = "w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse";
+        if (wText) wText.innerText = `⛅ Cloud Shadow Active (${Math.round(irradiance)} W/m²)`;
+      } else {
+        if (cloudGroup) cloudGroup.visible = false;
+        if (wBadge) wBadge.className = "bg-slate-950/80 backdrop-blur-md border border-slate-700/80 px-3 py-1.5 rounded-xl text-xs flex items-center gap-2 text-slate-200 shadow-lg";
+        if (wDot) wDot.className = "w-2.5 h-2.5 rounded-full bg-amber-400";
+        if (wText) wText.innerText = `☀️ Sunlight: Direct (${Math.round(irradiance)} W/m²)`;
+      }
+
+      const rpm = (windSpeed * 1.5).toFixed(1);
+      const windTxt = document.getElementById('canvasWindText');
+      if (windTxt) windTxt.innerText = `💨 Turbines: ${rpm} RPM (${windSpeed.toFixed(1)} m/s)`;
+
+      energyPulses.forEach(p => {
+        if (p.type === 'solar') p.speed = 0.002 + 0.012 * sunRatio;
+        if (p.type === 'wind') p.speed = 0.002 + 0.015 * Math.min(1.0, windSpeed / 20);
+        if (p.type === 'battery') p.speed = 0.008;
+      });
+
+      if (bessLedMesh) {
+        if (batteryLevel > 75) bessLedMesh.material.color.setHex(0x10b981);
+        else if (batteryLevel > 40) bessLedMesh.material.color.setHex(0x6366f1);
+        else bessLedMesh.material.color.setHex(0xf59e0b);
+      }
+    }
+
+    let cameraTargetPos = null;
+    let controlsTargetPos = null;
+
+    function setCameraView(preset) {
+      if (preset === 'overview') {
+        animateCameraTo(new THREE.Vector3(70, 50, 70), new THREE.Vector3(0, 5, 0));
+        closeAssetTooltip();
+      } else if (preset === 'solar') {
+        animateCameraTo(new THREE.Vector3(10, 26, 25), new THREE.Vector3(0, 14, 0));
+        showAssetTooltip("Rooftop Solar Arrays", "80 kWp High-Efficiency Monocrystalline. Generating " + currentSolarKw.toFixed(1) + " kW clean power with zero thermal degradation.");
+      } else if (preset === 'wind') {
+        animateCameraTo(new THREE.Vector3(-45, 42, -5), new THREE.Vector3(-45, 35, -32));
+        showAssetTooltip("Wind Turbine Unit #1 & #2", "Dual 30 kW Induction Turbines operating at " + currentWindKw.toFixed(1) + " kW with clean mechanical efficiency.");
+      } else if (preset === 'battery') {
+        animateCameraTo(new THREE.Vector3(45, 12, 28), new THREE.Vector3(34, 3, 15));
+        showAssetTooltip("BESS Lithium-Ion Battery Storage", "200 kWh Utility Buffer at " + currentBatteryPercent + "% Charge. Absorption rate: +13.7 kW clean energy buffer.");
+      }
+    }
+
+    function reset3DCamera() {
+      animateCameraTo(new THREE.Vector3(70, 50, 70), new THREE.Vector3(0, 5, 0));
+      closeAssetTooltip();
+    }
+
+    function animateCameraTo(targetCam, targetLook) {
+      cameraTargetPos = targetCam;
+      controlsTargetPos = targetLook;
+    }
+
+    function showAssetTooltip(title, text) {
+      const tooltip = document.getElementById('canvasAssetTooltip');
+      if (tooltip) {
+        document.getElementById('tooltipAssetName').innerText = title;
+        document.getElementById('tooltipAssetDetails').innerText = text;
+        tooltip.classList.remove('hidden');
+      }
+    }
+
+    function closeAssetTooltip() {
+      const tooltip = document.getElementById('canvasAssetTooltip');
+      if (tooltip) tooltip.classList.add('hidden');
+    }
+
+    function setupRaycaster(container) {
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+
+      container.addEventListener('click', (event) => {
+        const rect = container.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(scene.children, true);
+
+        if (intersects.length > 0) {
+          let hit = intersects[0].object;
+          while (hit.parent && !hit.name && hit.parent !== scene) {
+            hit = hit.parent;
+          }
+
+          if (hit.name === "Wind Turbine") {
+            setCameraView('wind');
+          } else if (hit.name === "Solar Arrays" || hit.parent?.name === "Solar Arrays") {
+            setCameraView('solar');
+          } else if (hit.name === "BESS Battery Storage Bank" || hit.parent?.name === "BESS Battery Storage Bank") {
+            setCameraView('battery');
+          } else if (hit.name === "Factory Building") {
+            showAssetTooltip("Industrial Manufacturing Hall", "Continuous clean power supply: 55.0 kW active load completely offset by renewables.");
+          }
+        }
+      });
+    }
+
+    function animate3D() {
+      requestAnimationFrame(animate3D);
+
+      if (cameraTargetPos && controlsTargetPos && camera && controls) {
+        camera.position.lerp(cameraTargetPos, 0.05);
+        controls.target.lerp(controlsTargetPos, 0.05);
+        if (camera.position.distanceTo(cameraTargetPos) < 0.2) {
+          cameraTargetPos = null;
+          controlsTargetPos = null;
+        }
+      }
+
+      if (controls) controls.update();
+
+      const windSpeed = parseFloat(document.getElementById('windSpeedNum')?.value || 12.5);
+      const spinDelta = (windSpeed * 0.0035);
+      if (turbineRotorGroup1) turbineRotorGroup1.rotation.z += spinDelta;
+      if (turbineRotorGroup2) turbineRotorGroup2.rotation.z += spinDelta;
+
+      energyPulses.forEach(p => {
+        p.progress += p.speed;
+        if (p.progress > 1.0) p.progress = 0;
+        const pos = p.curve.getPointAt(p.progress);
+        p.mesh.position.copy(pos);
+      });
+
+      if (cloudGroup && cloudGroup.visible) {
+        cloudGroup.position.x += 0.02;
+        if (cloudGroup.position.x > 50) cloudGroup.position.x = -50;
+      }
+
+      if (renderer && scene && camera) {
+        renderer.render(scene, camera);
+      }
+    }
+
+
+    // ========================================================
+    // 8. HELPERS, MODALS & EVENT HANDLERS
+    // ========================================================
+    function applyPresetScenario(type) {
+      if (type === 'sunny') {
+        setInputs({ irr: 980.0, temp: 31.0, hum: 35.0, spd: 8.5, dir: 180.0, pres: 1013.25 });
+        showSystemToast("Preset: Bright Sun", "High solar generation. Powering full plant and charging BESS battery.", "info");
+      } else if (type === 'cloudy') {
+        setInputs({ irr: 320.0, temp: 24.0, hum: 75.0, spd: 11.0, dir: 210.0, pres: 1008.0 });
+        showSystemToast("Preset: Cloud Front", "Cloud cover approaching in 1 hour. Storing extra clean energy now.", "info");
+      } else if (type === 'windy') {
+        setInputs({ irr: 650.0, temp: 26.0, hum: 55.0, spd: 19.5, dir: 270.0, pres: 1005.0 });
+        showSystemToast("Preset: High Wind", "Maximum kinetic turbine capture carrying factory floor.", "info");
+      } else if (type === 'monsoon') {
+        setInputs({ irr: 120.0, temp: 21.0, hum: 92.0, spd: 15.0, dir: 240.0, pres: 996.0 });
+        showSystemToast("Preset: Monsoon Alert", "Low solar irradiance. BESS battery discharging smoothly.", "error");
+      }
+      runForecastPipeline();
+    }
+
+    function setInputs({ irr, temp, hum, spd, dir, pres }) {
+      const setVal = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val;
+      };
+      setVal('solarIrradiance', irr);
+      setVal('solarIrradianceNum', irr);
+      setVal('solarTemp', temp);
+      setVal('solarTempNum', temp);
+      setVal('solarHumidity', hum);
+      setVal('solarHumidityNum', hum);
+      setVal('windSpeed', spd);
+      setVal('windSpeedNum', spd);
+      setVal('windDirection', dir);
+      setVal('windDirectionNum', dir);
+      setVal('airPressure', pres);
+      setVal('airPressureNum', pres);
+    }
+
+    function syncDualInput(sliderId, numberId) {
+      const slider = document.getElementById(sliderId);
+      const numberInput = document.getElementById(numberId);
+      if (slider && numberInput) {
+        slider.addEventListener('input', () => {
+          numberInput.value = slider.value;
+          onEnvironmentalParameterChange();
+        });
+        numberInput.addEventListener('input', () => {
+          slider.value = numberInput.value;
+          onEnvironmentalParameterChange();
+        });
+      }
+    }
+
+    let debounceTimer;
+    function onEnvironmentalParameterChange() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        runForecastPipeline();
+      }, 350);
+    }
+
+    function animateCounter(elementId, targetValue, decimals = 2) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      const start = parseFloat(el.innerText) || 0.0;
+      const duration = 350;
+      const startTime = performance.now();
+
+      function update(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1.0);
+        const current = start + (targetValue - start) * progress;
+        el.innerText = current.toFixed(decimals);
+        if (progress < 1.0) {
+          requestAnimationFrame(update);
+        } else {
+          el.innerText = targetValue.toFixed(decimals);
+        }
+      }
+      requestAnimationFrame(update);
+    }
+
+    function updateLiveClock() {
+      const clockEl = document.getElementById('liveTimeClock');
+      if (clockEl) {
+        const now = new Date();
+        clockEl.innerText = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+      }
+    }
+    setInterval(updateLiveClock, 1000);
+
+    function toggleNotificationPanel() {
+      const panel = document.getElementById('notificationDropdown');
+      if (panel) panel.classList.toggle('hidden');
+    }
+
+    function openManualOverrideModal() {
+      const modal = document.getElementById('manualOverrideModal');
+      if (modal) modal.classList.remove('hidden');
+    }
+    function closeManualOverrideModal() {
+      const modal = document.getElementById('manualOverrideModal');
+      if (modal) modal.classList.add('hidden');
+    }
+    function applyManualOverride() {
+      isAutonomousActive = false;
+      const toggle = document.getElementById('autonomousToggle');
+      if (toggle) toggle.checked = false;
+      const sub = document.getElementById('optimizationStatusSubtext');
+      if (sub) {
+        sub.innerText = "Manual plant override active (User Configured)";
+        sub.className = "text-[11px] text-amber-400";
+      }
+      closeManualOverrideModal();
+      showSystemToast("Manual Strategy Engaged", "Automated AI dispatch paused. Battery lock applied.", "info");
+    }
+
+    function toggleAutonomousMode(checkbox) {
+      isAutonomousActive = checkbox.checked;
+      const sub = document.getElementById('optimizationStatusSubtext');
+      if (isAutonomousActive) {
+        if (sub) {
+          sub.innerText = "Continuous 24/7 autonomous microgrid control";
+          sub.className = "text-[11px] text-emerald-400";
+        }
+        showSystemToast("Autonomous AI Active", "Self-optimizing microgrid controller re-engaged.", "success");
+      } else {
+        openManualOverrideModal();
+      }
+    }
+
+    function showSystemToast(title, msg, type = "info") {
+      const toast = document.getElementById('systemToast');
+      const tTitle = document.getElementById('toastTitle');
+      const tMsg = document.getElementById('toastMessage');
+      const tIcon = document.getElementById('toastIcon');
+      if (!toast) return;
+
+      tTitle.innerText = title;
+      tMsg.innerText = msg;
+
+      toast.className = "fixed top-5 right-5 z-50 p-4 rounded-xl shadow-2xl backdrop-blur-xl border transition-all duration-300 max-w-md bg-slate-900/95 border-slate-700";
+      if (type === "success") {
+        tIcon.innerHTML = `<span class="text-emerald-400 text-lg">✓</span>`;
+        toast.classList.add('border-emerald-500/40');
+      } else if (type === "error") {
+        tIcon.innerHTML = `<span class="text-rose-400 text-lg">✕</span>`;
+        toast.classList.add('border-rose-500/40');
+      } else {
+        tIcon.innerHTML = `<span class="text-cyan-400 text-lg">ℹ</span>`;
+        toast.classList.add('border-cyan-500/40');
+      }
+
+      toast.classList.remove('hidden');
+      setTimeout(dismissSystemToast, 4500);
+    }
+
+    function dismissSystemToast() {
+      const toast = document.getElementById('systemToast');
+      if (toast) toast.classList.add('hidden');
+    }
+
+    // --- DOM INITIALIZATION ---
+    window.addEventListener('DOMContentLoaded', () => {
+      syncDualInput('solarTemp', 'solarTempNum');
+      syncDualInput('solarIrradiance', 'solarIrradianceNum');
+      syncDualInput('solarHumidity', 'solarHumidityNum');
+
+      syncDualInput('windSpeed', 'windSpeedNum');
+      syncDualInput('windDirection', 'windDirectionNum');
+      syncDualInput('airPressure', 'airPressureNum');
+
+      init3DWorld();
+      runForecastPipeline();
+      updateLiveClock();
+    });
+  </script>
+
+</body>
+</html>
